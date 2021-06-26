@@ -1,19 +1,15 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -I..
+use warnings;
+use strict;
+
+package horas;
 use utf8;
 
 # Name : Laszlo Kiss
 # Date : 01-20-08
 # Divine Office Kalendarium
-package horas;
-
-#1;
-#use warnings;
-#use strict "refs";
-#use strict "subs";
-#use warnings FATAL=>qw(all);
 
 use POSIX;
-use FindBin qw($Bin);
 use CGI;
 use CGI::Cookie;
 use CGI::Carp qw(fatalsToBrowser);
@@ -22,10 +18,10 @@ use Time::Local;
 
 #use DateTime;
 use locale;
-use lib "$Bin/..";
 use DivinumOfficium::Main qw(load_versions);
-$error = '';
-$debug = '';
+
+our $error = '';
+our $debug = '';
 
 #*** common variables arrays and hashes
 #filled  getweek()
@@ -53,25 +49,26 @@ our $duplex;                                  #1= simplex 2=semiduplex, 3=duplex
 our $sanctiname = 'Sancti';
 our $temporaname = 'Tempora';
 our $communename = 'Commune';
-require "$Bin/do_io.pl";
-require "$Bin/horascommon.pl";
-require "$Bin/dialogcommon.pl";
-require "$Bin/webdia.pl";
+use horas::do_io;
+use horas::horascommon;
+use horas::dialogcommon;
+use horas::webdia;
+use horas::monastic;
 
-if (-e "$Bin/monastic.pl") { require "$Bin/monastic.pl"; }
 binmode(STDOUT, ':encoding(utf-8)');
-$q = new CGI;
+our $q = new CGI;
 
 #*** get parameters
 getini('horas');    #files, colors
-$setupsave = strictparam('setup');
+our $setupsave = strictparam('setup');
 $setupsave =~ s/\~24/\"/g;
-$date1 = strictparam('date1');
-$browsertime = strictparam('browsertime');
+our $date1 = strictparam('date1');
+our $browsertime = strictparam('browsertime');
 
 #internal script, cookies
-%dialog = %{setupstring($datafolder, '', 'horas.dialog')};
+our %dialog = %{setupstring($datafolder, '', 'horas.dialog')};
 
+our %setup;
 if (!$setupsave) {
   %setup = %{setupstring($datafolder, '', 'horas.setup')};
 } else {

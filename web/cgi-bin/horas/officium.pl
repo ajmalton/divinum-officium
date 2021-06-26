@@ -6,26 +6,32 @@ use utf8;
 # Divine Office
 package horas;
 
-#1;
-#use warnings;
-#use strict "refs";
-#use strict "subs";
-#use warnings FATAL=>qw(all);
+use warnings;
+use strict;
 
 use POSIX;
-use FindBin qw($Bin);
 use CGI;
 use CGI::Cookie;
 use CGI::Carp qw(fatalsToBrowser);
 use File::Basename;
 use Time::Local;
 
-#use DateTime;
-use locale;
-use lib "$Bin/..";
+#*** collect standard items
 use DivinumOfficium::Main qw(vernaculars load_versions liturgical_color);
-$error = '';
-$debug = '';
+use horas::horascommon;
+use horas::dialogcommon;
+use horas::webdia;
+use horas::setup;
+use horas::horas;
+use horas::specials;
+use horas::specmatins;
+use horas::monastic;
+use horas::do_io;
+
+#### horas:: global variables
+#
+our $error = '';
+our $debug = '';
 
 our $Tk = 0;
 our $Hk = 0;
@@ -33,6 +39,15 @@ our $Ck = 0;
 our $notes = 0;
 our $missa = 0;
 our $officium = 'officium.pl';
+our @versions = (
+  'Tridentine 1570',
+  'Tridentine 1910',
+  'Divino Afflatu',
+  'Reduced 1955',
+  'Rubrics 1960',
+  'Ordo Praedicatorum',
+  '1960 Newcalendar'
+);
 our $version = 'Rubrics 1960';
 
 #***common variables arrays and hashes
@@ -63,28 +78,20 @@ our $rule;                                    # $winner{Rank}
 our $communerule;                             # $commune{Rank}
 our $duplex;                                  #1=simplex-feria, 2=semiduplex-feria privilegiata, 3=duplex
     # 4= duplex majus, 5 = duplex II classis 6=duplex I classes 7=above  0=none
+our $setupsave;
+our $setup;
+our %dialog;
+our ($lang1, $lang2, $expand, $column, $accented, $local);
+our %translate;     #translation of the skeleton labels
 
 binmode(STDOUT, ':encoding(utf-8)');
 
-#*** collect standard items
-require "$Bin/horascommon.pl";
-require "$Bin/dialogcommon.pl";
-require "$Bin/webdia.pl";
-require "$Bin/setup.pl";
-require "$Bin/horas.pl";
-require "$Bin/specials.pl";
-require "$Bin/specmatins.pl";
-
-if (-e "$Bin/monastic.pl") { require "$Bin/monastic.pl"; }
-require "$Bin/do_io.pl";
-$q = new CGI;
+our $q = new CGI;
 
 #get parameters
 getini('horas');    #files, colors
 $setupsave = strictparam('setup');
 $setupsave =~ s/\~24/\"/g;
-our ($lang1, $lang2, $expand, $column, $accented, $local);
-our %translate;     #translation of the skeleton labels
 
 #internal script, cookies
 %dialog = %{setupstring($datafolder, '', 'horas.dialog')};
@@ -98,7 +105,10 @@ if (!$setupsave && !getcookies('horasp', 'parameters')) { setcookies('horasp', '
 if (!$setupsave && !getcookies('horasgo', 'general')) { setcookies('horasgo', 'general'); }
 
 our $command = strictparam('command');
-our $hora = $command;    #Matutinum, Laudes, Prima, Tertia, Sexta, Nona, Vespera, Completorium
+#Matutinum, Laudes, Prima, Tertia, Sexta, Nona,
+#Vespera, Completorium
+
+our $hora = $command;
 our $browsertime = strictparam('browsertime');
 our $buildscript = '';    #build script
 our $searchvalue = strictparam('searchvalue');
