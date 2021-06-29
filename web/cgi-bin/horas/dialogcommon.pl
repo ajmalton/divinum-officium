@@ -1,18 +1,30 @@
-#!/usr/bin/perl
+package horas;
 use utf8;
+
+use warnings 'all';
+use strict;
 
 # Name : Laszlo Kiss
 # Date : 01-25-04
 # dialog/setup related subs
-$a = 4;
+
+use horas::horascommon;
+
+our %dialog;
+our %setup;
+our $dayofweek;
+our $version;
+our $missa;
+our $missanumber;
+our @dayname;
 
 #*** getini(file)
 # loads and interprets .ini file
 # the file consists of $var='value' lines
-sub getini {
-  my $file = shift;
-  eval for do_read("$Bin/$file.ini");
-}
+#sub getini {
+#  my $file = shift;
+#  eval for do_read("$Bin/$file.ini");
+#}
 
 #*** chompd($str)
 # removes the newline characters from the end of the string
@@ -63,7 +75,7 @@ sub getdialogcolumn {
   my $str = $dialog{$name};
   $str =~ s/\n//g;
   my @a = split(',', $str);
-  my @b = splice(@b, @b);
+  my @b = ();
 
   foreach (@a) {
     my @c = split($sep, $_);
@@ -96,7 +108,7 @@ sub setsetupvalue {
   my @script = split(';;', $script);
   $script = "";
 
-  for ($i = 0; $i < @script; $i++) {
+  for (my $i = 0; $i < @script; $i++) {
     my $si = $script[$i];
     $si =~ s/\=/\~\>/;
     my @elems = split('~>', $si);
@@ -219,7 +231,7 @@ sub setsetup {
   my @script = split(';;', $script);
   $script = "";
 
-  for ($i = 0; $i < @script; $i++) {
+  for (my $i = 0; $i < @script; $i++) {
     my $si = $script[$i];
     $si =~ s/\=/\~\>/;
     my @elems = split('~>', $si);
@@ -242,8 +254,9 @@ use constant {
 # Loads the database file from path "$basedir/$lang/$fname" through
 # the cache. Inclusions are performed according to the value of
 # $params{'resolve@'}. If omitted, the default is RESOLVE_ALL.
-sub setupstring($$$%) {
-
+sub setupstring($$$%);
+sub setupstring($$$%)
+{
   my ($basedir, $lang, $fname, %params) = @_;
   my $fullpath = "$basedir/$lang/$fname";
   our ($lang1, $lang2, $missa);
@@ -265,7 +278,9 @@ sub setupstring($$$%) {
   unless (exists ${$inclusioncache}{$fullpath}) {
 
     # Not yet in cache, so open it and add it.
-    my ($base_sections, $new_sections) = ({}, {});
+    my $base_sections = {__preamble=>''};
+    my $new_sections = {};
+
 
     if ($lang eq 'English') {
 
@@ -405,11 +420,10 @@ sub setupstring_parse_file($$$) {
 # array @lines of lines.
 sub process_conditional_lines {
 
-  my $conditional_regex = conditional_regex();
   my @output;
-  use constant 'COND_NOT_YET_AFFIRMATIVE' => 0;
-  use constant 'COND_AFFIRMATIVE' => 1;
-  use constant 'COND_DUMMY_FRAME' => 2;
+  use constant COND_NOT_YET_AFFIRMATIVE => 0;
+  use constant COND_AFFIRMATIVE => 1;
+  use constant COND_DUMMY_FRAME => 2;
   my @conditional_stack = ([COND_AFFIRMATIVE, SCOPE_NEST]);
   my @conditional_offsets = (-1);
   my $blankline_regex = qr/^\s*_?\s*$/;
@@ -468,8 +482,7 @@ sub process_conditional_lines {
         # Having backtracked, null forward scope now behaves like a
         # satisfied conditional with nesting forward scope.
         if ($forwardscope == SCOPE_NULL) {
-          $forwardscope = SCOPE_NEST;
-          $result = 1;
+	  $forwardscope = SCOPE_NEST;
         }
 
         if ($result) {
@@ -585,7 +598,7 @@ sub setuppar {
   $par = "";
   my $s;
 
-  for ($i = 0; $i < @par; $i++) {
+  for (my $i = 0; $i < @par; $i++) {
     if (!$par[$i]) { next; }
     my @a = split('~>', $par[$i]);
     $a[1] = eval($a[1]);

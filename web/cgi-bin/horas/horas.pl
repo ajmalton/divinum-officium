@@ -1,11 +1,8 @@
-#!/usr/bin/perl
 use utf8;
 
 # Name : Laszlo Kiss
 # Date : 01-20-08
 # Divine Office
-use FindBin qw($Bin);
-use lib "$Bin/..";
 
 # Defines ScriptFunc and ScriptShortFunc attributes.
 use horas::Scripting;

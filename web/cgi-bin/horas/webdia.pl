@@ -1,13 +1,55 @@
-#!/usr/bin/perl
+package horas;
 use utf8;
+use v5.10;
 
 # Name : Laszlo Kiss
 # Date : 01-11-04
 # WEB dialogs
-#use warnings;
-#use strict "refs";
-#use strict "subs";
+use warnings 'all';
+use strict;
+
+our $q;  # CGI
+
+our $error;
+our $htmlurl;
+our $datafolder;
+our $dialogfont;
+our %setup;
+
+our $Ck;
+our $notes;
+our $background;
+our $imgurl;
+our $officium;
+our $lang1;
+our $hora;
+our $date1;
+our $version;
+our $caller;
+our $lang2;
+our $votive;
+our $testmode;
+our $expand;
+our $column;
+our $textwidth;
+our $border;
+our $blackfont;
+
+our $cookieexpire;
+our %cookies;
+our $only;
+our $searchind;
+
+our $text1; #TODO fix this ref
+
+
 my $a = 4;
+my $input;
+
+my $check;
+my @ctext1;
+my @ctext2;
+
 
 #*** htmlHead($title, $flag)
 # generated the standard head with $title
@@ -79,14 +121,14 @@ sub setup {
   my $i;
   my $helpfile = "$htmlurl/help/horashelp.html";
   $helpfile =~ s/\//\\/g;
-  @parname = splice(@parname, @parname);
-  @parvalue = splice(@parvalue, @parvalue);
-  @parmode = splice(@parmode, @parmode);
-  @parpar = splice(@parpar, @parpar);
-  @parfunc = splice(@parfunc, @parfunc);
-  @parhelp = splice(@parhelp, @parhelp);
+  my @parname = ();
+  my @parvalue = ();
+  my @parmode = ();
+  my @parpar = ();
+  my @parfunc = ();
+  my @parhelp = ();
 
-  for ($i = 0; $i < @script; $i++) {
+  for (my $i = 0; $i < @script; $i++) {
     my @elems = split('~>', $script[$i]);
     $parname[$i] = $elems[0];
     $parvalue[$i] = $elems[1];
@@ -100,7 +142,7 @@ sub setup {
   $input = "<TABLE BORDER=2 CELLPADDING=5 ALIGN=CENTER BACKGROUND=\"$htmlurl/horasbg.jpg\"><TR>\n";
   my $k = 0;
 
-  for ($i = 0; $i < @script; $i++) {
+  for (my $i = 0; $i < @script; $i++) {
     if (!$parmode[$i]) { next; }
     my $v0 = $parvalue[0];
     $input .= "<TR><TD ALIGN=left>\n";
@@ -134,7 +176,7 @@ sub setup {
       if ($loadfile) {
         $loadfile =~ s/\.gen//;
 
-        if (@cm = do_read("$datafolder/gen/$loadfile.gen")) {
+        if (my @cm = do_read("$datafolder/gen/$loadfile.gen")) {
           $pv = join('', @cm);
         }
       }
@@ -157,7 +199,7 @@ sub setup {
       $rpar = $parpar[$i];
       @rpar = split(',', $rpar);
 
-      for ($j = 1; $j <= @rpar; $j++) {
+      for (my $j = 1; $j <= @rpar; $j++) {
         my $checked = ($parvalue[$i] == $j) ? 'CHECKED' : '';
         if ($parmode[$i] =~ /vert/i) { $input .= "<TR><TD>"; }
         my $jsfunc = '';
@@ -199,6 +241,7 @@ sub setup {
       my $a = $parpar[$i];
       if (!$a) { $error = "Missing parameter for Optionmenu"; return ""; }
 
+      my @optarray;
       if ($a =~ /\@/ || ref($a) =~ /ARRAY/i) {
         @optarray = eval($a);
       } elsif ($a =~ /^\s*\{(.+)\}\s*$/) {
@@ -237,21 +280,23 @@ sub setup {
 sub cleanse($) {
   my $str = shift;
 
-  unless ($str =~ /^\w*$/) {
+  if (defined($str)) {
+    unless ($str =~ /^\w*$/) {
 
-    # Complex params are generally ;-separated chunks where
-    # a chunk is either an identifier or a quoted string of assorted chars,
-    # possibly preceded by an assignment $id= .
-    @parts = split(/;/, $str);
+      # Complex params are generally ;-separated chunks where
+      # a chunk is either an identifier or a quoted string of assorted chars,
+      # possibly preceded by an assignment $id= .
+      my @parts = split(/;/, $str);
 
-    foreach my $part (@parts) {
-      unless ($part =~ /^([^'`"\\={}()]*|'[^'`"\\]*'|\$\w+='[^'`"\\]*')$/i) {
+      foreach my $part (@parts) {
+	unless ($part =~ /^([^'`"\\={}()]*|'[^'`"\\]*'|\$\w+='[^'`"\\]*')$/i) {
 
-        #print STDERR "erasing $part\n";
-        $part = '';
+	  #print STDERR "erasing $part\n";
+	  $part = '';
+	}
       }
+      $str = join(';', @parts);
     }
-    $str = join(';', @parts);
   }
   return $str;
 }
@@ -268,7 +313,7 @@ sub getsetupvalue {
   eval($script);
   $script = "";
 
-  for ($i = 0; $i < @script; $i++) {
+  for (my $i = 0; $i < @script; $i++) {
     $script[$i] =~ s/\=/\~\>/;
     my @elems = split('~>', $script[$i]);
     my $value = cleanse($q->param("I$i"));
@@ -344,13 +389,13 @@ sub getcookies {
 
   my $cname = shift;
   my $name = shift;
-  my @sti = splice(@sti, @sti);
+  my @sti = ();
   my $sti = '';
   my $checkname = $name . 'check';
 
   $check = $setup{$checkname};
-  $check =~ s/\s//g;
-  %cookies = fetch_cookies();
+  $check =~ s/\s//g if defined $check;
+  my %cookies = fetch_cookies();
 
   foreach (keys %cookies) {
     my $c = $cookies{$_};
@@ -389,12 +434,18 @@ sub setcookies {
 
   my $cname = shift;
   my $name = shift;
-  my @values = split(';;', $setup{$name});
+  my $setupstr = $setup{$name};
+  my @values;
+  if (defined($setupstr)) {
+    @values = split(';;', $setup{$name});
+  } else {
+    @values = ();
+  }
   my $value = '';
   my $checkname = $name . 'check';
 
   $check = $setup{$checkname};
-  $check =~ s/\s//g;
+  $check =~ s/\s//g if defined $check;
 
   if (!$values[-1]) {
     my %s = %{setupstring($datafolder, '', 'horas.setup')};
@@ -402,13 +453,17 @@ sub setcookies {
   }
 
   foreach (@values) {
-    my @a = split('=', $_);
-    $value .= "$a[1]";
-    while ($value !~ /\;\;\;$/) { $value .= ';' }
+    if (/=/) {
+      my @a = split('=', $_);
+      $value .= "$a[1]";
+      while ($value !~ /\;\;\;$/) {
+	$value .= ';'
+      }
+    }
   }
   $value .= "$check;;;";
   $value =~ s/\r*\n/  /g;
-  $c = $q->cookie(
+  my $c = $q->cookie(
     -name => "$cname",
     -value => "$value",
     -expires => "$cookieexpire"
@@ -428,7 +483,7 @@ sub setcookie1 {
   my $value = shift;
   my @t = localtime(time() + 60 * 60 * 24);
   my $t = timelocal($t[0], $t[1], $t[2], $t[3], $t[4], $t[5]);
-  $c = $q->cookie(
+  my $c = $q->cookie(
     -name => "$cname",
     -value => "$value",
     -expires => $t
@@ -456,33 +511,34 @@ sub getcookie1 {
 # This version uses Unicode entities instead of small GIFs.
 sub setcross {
   my $line = shift;
+  my $csubst;
 
   if (CGI::user_agent("BlackBerry")) {
 
     # Not enough Unicode for what we really want, below.  Fake it.
     # cross type 3: COPTIC SMALL LETTER DEI
-    my $csubst = "<span style='color:red; font-size:1.25em'>&#x03EF;</span>";
+    $csubst = "<span style='color:red; font-size:1.25em'>&#x03EF;</span>";
     $line =~ s/\+\+\+/$csubst/g;
 
     # Cross type 2: Latin Cross
-    my $csubst = "<span style='color:red; font-size:1.25em'>&#x271D;&#xFE0E;</span>";
+    $csubst = "<span style='color:red; font-size:1.25em'>&#x271D;&#xFE0E;</span>";
     $line =~ s/\+\+/$csubst/g;
 
     # Cross type 1: PLUS SIGN
-    my $csubst = "<span style='color:red; font-size:1.25em'>+</span>";
+    $csubst = "<span style='color:red; font-size:1.25em'>+</span>";
     $line =~ s/ \+ / $csubst /g;
   } else {
 
     # Cross type 3: Outlined Greek Cross
-    my $csubst = "<span style='color:red; font-size:1.25em'>&#x2719;&#xFE0E;</span>";
+    $csubst = "<span style='color:red; font-size:1.25em'>&#x2719;&#xFE0E;</span>";
     $line =~ s/\+\+\+/$csubst/g;
 
     # Cross type 2: Greek Cross
-    my $csubst = "<span style='color:red; font-size:1.25em'>+︎</span>";
+    $csubst = "<span style='color:red; font-size:1.25em'>+︎</span>";
     $line =~ s/\+\+/$csubst/g;
 
     # cross type 1: Maltese Cross
-    my $csubst = "<span style='color:red; font-size:1.25em'>✠</span>";
+    $csubst = "<span style='color:red; font-size:1.25em'>✠</span>";
     $line =~ s/ \+ / $csubst /g;
   }
   return $line;
@@ -572,6 +628,7 @@ sub setcell {
 sub topnext_cell {
   if ($officium =~ /Pofficium/i) { return; }
   my $lang = shift;
+  # TODO should this be $text from caller?
   my @a = split('<BR>', $text1);
   if (@a > 2 && $expand !~ /skeleton/i) { print topnext($lang); }
 }
@@ -595,8 +652,8 @@ sub topnext {
 # start main table
 sub table_start {
   if ($Ck) {
-    @ctext1 = splice(@ctext1, @ctext1);
-    @ctext2 = splice(@ctext2, @ctext2);
+    @ctext1 = ();
+    @ctext2 = ();
   }
   my $width =
     ($textwidth && $textwidth =~ /^[0-9]+$/ && 50 <= $textwidth && $textwidth <= 100)
@@ -624,6 +681,7 @@ sub table_end {
     print "<TR><TD $background VALIGN=TOP WIDTH=$width%>\n";
     my $item;
     my $len1 = 0;
+    my $len2;
     foreach $item (@ctext1) { print "$item<BR>\n"; $len1 += wnum($item); }
     print "</TD>\n";
 
@@ -679,3 +737,4 @@ sub option_selector {
   }
   return $output . "</SELECT>\n"
 }
+1;

@@ -1,15 +1,98 @@
-#!/usr/bin/perl
+package horas;
 use utf8;
+use v5.10;
 
 # Name : Laszlo Kiss
 # Date : 01-25-08
-# horas common files to reconcile tempora & sancti also for missa
-#use warnings;
-#use strict "refs";
-#use strict "subs";
-use FindBin qw($Bin);
-use lib "$Bin/..";
+# horas common files to reconcile tempora & sancti
+# also for missa
+use warnings 'all';
+use strict; 
+
 use horas::Scripting qw(dispatch_script_function parse_script_arguments);
+#use horas::dialogcommon;
+
+our $browsertime; #!! :-(
+our $caller;
+our $commemorated;
+our $commemoratio;
+our %commemoratio;
+our $commemoratio1;
+our %commemoratio1;
+our %commemoratio2;
+our $comment;
+our $commune;
+our %commune;
+our %commune2;
+our $communename;
+our %communesname;
+our $communerule;
+our $communetype;
+our $comrank;
+our $cvespera;
+our $datafolder;
+our $date1;
+our @date1;
+our $day;
+our $dayname;
+our @dayname;
+our $dayofweek;
+our %dialog;
+our $dirge;
+our $dirgeline;
+our $duplex;
+our $expand;
+our $Hk;
+our $hora;
+our $lang1;
+our $lang2;
+our $laudes;
+our $missa;
+our $missanumber;
+our $month;
+our $monthday;
+our $nextdayofweek;
+our %prayers;
+our $rank;
+our @rank;
+our $rule;
+our $sanctiname;
+our $scriptura;
+our %scriptura;
+our %scriptura2;
+our @sundaytable;
+our $svesp;
+our $temporaname;
+our $testmode;
+our $Tk;
+our $tvesp;
+our $vespera;
+our $votive;
+our $winner;
+our %winner;
+our %winner2;
+our $year;
+
+# these are only shared with horas::specials
+our $antecapitulum;
+our $antecapitulum1;
+our $anterule;
+our $hymncontract;
+our $seasonalflag;
+our $transfervigil;
+
+my %transfer;
+my $transfertemp;
+my %transfertemp;
+my @d;
+my $C10;
+
+state $marian_commem;
+
+our $transfer;
+our $error;
+our $version;
+
 my @lines;
 my $a = 4;
 
@@ -26,6 +109,7 @@ sub error {
 # next day if $flag
 sub getweek {
   my $flag = shift;
+  my $n;
   my $t = date_to_days($date1[1], $date1[0] - 1, $year);
   if ($flag) { $t += 1; }
   @d = days_to_date($t);
@@ -52,7 +136,7 @@ sub getweek {
     return '';
   }
   my $ordtime = date_to_days(6, 0, $year);
-  @ot = days_to_date($ordtime);
+  my @ot = days_to_date($ordtime);
   $ordtime += (7 - $ot[6]);
   my $easter = date_to_days(geteaster($year));
 
@@ -94,7 +178,7 @@ sub getname {
   if (!@sundaytable) { getsundaytable(); }
   my $i = 0;
 
-  for ($i = 0; $i < @sundaytable; $i++) {
+  for (my $i = 0; $i < @sundaytable; $i++) {
     my $str = $sundaytable[$i];
 
     if ($str && $str =~ /^$abbr\=(.+)/) {
@@ -183,9 +267,6 @@ sub getrank {
   my $cname = '';
   my @trank = ();
   my @srank = ();
-  our $transfervigil = '';
-  our %transfer;
-  our $hymncontract = 0;
   my $kalendarname =
       ($version =~ /Monastic/i) ? 'M'
     : ($version =~ /1570/) ? 1570
@@ -196,9 +277,12 @@ sub getrank {
     : ($version =~ /1960/) ? 1960
     : ($version =~ /Praedicatorum/) ? 1960
     : 1960;
-  our %kalendar = undef;
-  our $kalendarkey = '';
+  my %kalendar;
+  my @a;
 
+  $transfervigil = '';
+  $hymncontract = 0;
+  
   if (@a = do_read("$datafolder/../horas/Latin/Tabulae/K$kalendarname.txt")) {
     foreach (@a) {
       my @item = split('=', $_);
@@ -259,8 +343,8 @@ sub getrank {
   }
   if (exists($transfertemp{$sday}) && $transfertemp{$sday} =~ /tempora/i) { $tn = $transfertemp{$sday}; }
   if (exists($transfer{$sday}) && $transfer{$sday} =~ /tempora/i) { $tn = $transfer{$sday}; }
-  $tn1 = '';
-  $tn1rank = '';
+  my $tn1 = '';
+  my $tn1rank = '';
   my $nday = nextday($month, $day, $year);
 
   #if ($hora =~ /(vespera|Completorium)/i) {
@@ -269,17 +353,20 @@ sub getrank {
   if ($testmode =~ /(Saint|Common)/i) { $tn = 'none'; }
 
   #Vespera anticipation  concurrence
+
+  my $dn0;
+  my %tn1;
   if (-e "$datafolder/Latin/$tn.txt" || $dayname[0] =~ /Epi0/i || ($transfer{$nday}) =~ /tempora/i) {
-    $dofw = $dayofweek;
+    my $dofw = $dayofweek;
 
     if ($hora =~ /(vespera|completorium)/i && $testmode !~ /(Saint|Common)/i) {
       my $a = getweek(1);
       my @a = split('=', $a);
-      $dn[0] = $a[0];
-      $dn[0] =~ s/\s*$//g;
-      $dn[0] =~ s/^\s*//g;
+      $dn0 = $a[0];
+      $dn0 =~ s/\s*$//g;
+      $dn0 =~ s/^\s*//g;
       $dofw = ($dayofweek + 1) % 7;
-      $tn1 = "$temporaname/$dn[0]-$dofw";
+      $tn1 = "$temporaname/$dn0-$dofw";
 
       if (exists($transfertemp{$tn1})) {
         $tn1 = $transfertemp{$tn1};
@@ -335,7 +422,7 @@ sub getrank {
     $trank =~ s/;;5.6/;;2/;
   }
   @trank = split(";;", $trank);
-  @tn1 = split(';;', $tn1rank);
+  my @tn1 = split(';;', $tn1rank);
 
   if ($tn1[2] >= $trank[2]) {
     $tname = "$tn1.txt";
@@ -343,13 +430,14 @@ sub getrank {
     $trank = $tempora{Rank};
     if ($version =~ /1960/ && $tn1 =~ /Nat1/i && $day =~ /(25|26|27|28)/) { $trank =~ s/;;5/;;4/; }
     @trank = split(";;", $trank);
-    $dayname[0] = $dn[0];
+    $dayname[0] = $dn0;
     $tvesp = 1;
   } elsif (!$trank) {
     $tname = '';
     %tempora = {};
   }
-  $initia = ($tempora{Lectio1} =~ /!.*? 1\:1\-/) ? $initia = 1 : 0;
+  my $initia = ($tempora{Lectio1} =~ /!.*? 1\:1\-/) ? 1 : 0;
+  my $sn;
 
   #handle sancti
   $sn = "$sanctiname/$kalendar{$sday}";
@@ -418,10 +506,12 @@ sub getrank {
 
   #if ( transfered($sday) && $srank !~ /Christi Regis/i) {$srank[2] = 0;}
   #check for concurrence
-  my $cday = $crank = '';
-  my %csaint = {};
+  my $cday = '';
   my $crank = '';
+  my %csaint = {};
   my $vflag = 0;
+  my @crank;
+
   $cday = nextday($month, $day, $year);
   if ($transfer{$cday} !~ /tempora/i && transfered($cday)) { $cday = 'none'; }
   if (exists($transfer{$cday}) && $transfer{$cday} !~ /Tempora/i) { $cday = $transfer{$cday}; }
@@ -442,7 +532,7 @@ sub getrank {
     if (-e "$datafolder/Latin/$cday.txt") {
       $cname = "$cday.txt";
       %csaint = updaterank(setupstring($datafolder, 'Latin', "$cname"));
-      $BMVSabbato = ($csaint{Rank} =~ /Vigilia/) ? 0 : 1;
+      #$BMVSabbato = ($csaint{Rank} =~ /Vigilia/) ? 0 : 1;
       $crank = ($csaint{Rank} =~ /vigilia/i && $csaint{Rank} !~ /(;;[56]|Epi)/i) ? '' : $csaint{Rank};
       if ($crank =~ /(Feria|Vigilia)/i && $csaint{Rank} !~ /in Vigilia Epi/i) { $crank = ''; }
     }
@@ -509,7 +599,7 @@ sub getrank {
           : '';
 
         if ($antecapitulum) {
-          %saint2 = %{setupstring($datafolder, $lang2, $sname)};
+          my %saint2 = %{setupstring($datafolder, $lang2, $sname)};
           $antecapitulum2 =
               (exists($saint2{'Ant Vespera 3'})) ? $saint2{'Ant Vespera 3'}
             : (exists($saint2{'Ant Vespera'})) ? $saint2{'Ant Vespera'}
@@ -699,7 +789,7 @@ sub getrank {
 
     #if ($version =~ /1960/ && $srank[2] >= 6 && $trank[2] < 6) {$tname = $trank = ''; @trank = undef;}
     # Is the commemoration Marian?
-    our $marian_commem = 0;
+    $marian_commem = 0;
 
     if (transfered($tname)) {    #&& !$vflag)
       if ($hora !~ /Completorium/i) { $dayname[2] = "Transfer $trank[0]"; }
@@ -738,7 +828,7 @@ sub getrank {
       $dayname[2] = '';
       $commemoratio = '';
     }
-    %w = %{officestring($datafolder, 'Latin', $winner)};
+    my %w = %{officestring($datafolder, 'Latin', $winner)};
 
     if (($hora =~ /matutinum/i || (!$dayname[2] && $hora !~ /Vespera|Completorium/i)) && $rank < 7) {
       my %scrip = %{officestring($datafolder, 'Latin', $tname)};
@@ -807,7 +897,7 @@ sub getrank {
       $dayname[2] = "Transfer $srank[0]";
       $commemoratio = '';
     } elsif ($srank[2]) {
-      %w = %{officestring($datafolder, 'Latin', $winner)};
+      my %w = %{officestring($datafolder, 'Latin', $winner)};
       my $climit1960 = climit1960($sname);
 
       if (
@@ -817,7 +907,7 @@ sub getrank {
           || ($svesp == 1 && $hora =~ /vespera/i))
         )
       {
-        $laudesonly = ($missa) ? '' : ($climit1960 > 1) ? ' ad Laudes tantum' : '';
+        my $laudesonly = ($missa) ? '' : ($climit1960 > 1) ? ' ad Laudes tantum' : '';
 
         #(nomatinscomm(\%w)) ? ' Laudes, Vesperas' : '';
         if ($srank[0] =~ /vigil/i && $srank[0] !~ /Epiph/i) {
@@ -850,7 +940,7 @@ sub getrank {
 
     if (!$commemoratio && !$commemoratio1 && $sname) {
       $sname =~ s/v\././;
-      my %s = %{setupstring($datafolder, Latin, $sname)};
+      my %s = %{setupstring($datafolder, 'Latin', $sname)};
       if ($s{Rank} =~ /Vigil/i && exists($s{Commemoratio})) { $commemorated = $sname; }
       if ($s{Rank} =~ /Vigil/i && exists($s{"Commemoratio 2"})) { $commemorated = $sname; }
     }
@@ -884,9 +974,6 @@ sub extract_common($$) {
 
   # These shadow globals.
   my ($communetype, $commune);
-  our ($datafolder, $lang1, $communename, $sanctiname);
-  our $version;
-  our @dayname;
 
   if ($common_field =~ /^(ex|vide)\s*C/i) {
 
@@ -953,7 +1040,7 @@ sub get_sday {
     }
   }
 
-  $kalendarkey = sprintf("%02i-%02i", $month, $day);
+  my $kalendarkey = sprintf("%02i-%02i", $month, $day);
   return $kalendarkey;
 }
 
@@ -986,24 +1073,35 @@ sub gettoday {
   my $flag = shift;
   if ($browsertime && !$flag) { return $browsertime; }
   my @date = localtime(time());
-  my $month = @date[4] + 1;
-  my $day = @date[3];
-  my $year = @date[5] + 1900;
+  my $month = $date[4] + 1;
+  my $day = $date[3];
+  my $year = $date[5] + 1900;
   return "$month-$day-$year";
 }
 
 #*** precedence()
 # get date, rank, winner, preloads hashes
 sub precedence {
-  $winner = $commemoratio = $commune = $scriptura = $commemoratio1 = '';
-  %winner = %commemoratio = %commune = %scriptura = {};
+  $winner = '';
+  $commemoratio = '';
+  $commune = '';
+  $scriptura = '';
+  $commemoratio1 = '';
+
+  %winner = ();
+  %commemoratio = ();
+  %commune = ();
+  %scriptura = ();
 
   #get date
-  $dat1 = shift;
+  my $dat1 = shift;
   if (!$dat1) { $dat1 = ($Tk || $Hk) ? $date1 : strictparam('date'); }
   $date1 = $dat1;
   if ($votive =~ /hodie/ && !$Hk) { $date1 = gettoday(); }
 
+  my $vtv;
+  my $flag;
+  
   if (!$missa) {
     $vtv =
         ($votive =~ /(Dedication|C8)/i) ? 'C8'
@@ -1033,7 +1131,7 @@ sub precedence {
   @date1 = split('-', $date1);
   $dayname = getweek(0);
   @dayname = split('=', $dayname);
-  our $C10 = 'C10';
+  $C10 = 'C10';
   if ($missa) {
     $C10 .= ($dayname[0] =~ /Adv/i) ? 'a'
             : ($month == 1 || ($month == 2 && $day == 1)) ? 'b'
@@ -1064,7 +1162,7 @@ sub precedence {
       $wm =~ s/\.txt/m$missanumber\.txt/i;
       if ($missanumber && (-e "$datafolder/Latin/$wm")) { $winner = $wm; }
     }
-    my $flag = ($winner =~ /tempora/i && $tvesp == 1) ? 1 : 0;
+    $flag = ($winner =~ /tempora/i && $tvesp == 1) ? 1 : 0;
     %winner = %{officestring($datafolder, $lang1, $winner, $flag)};
     %winner2 = %{officestring($datafolder, $lang2, $winner, $flag)};
 
@@ -1337,10 +1435,10 @@ sub monthday {
   # Get tomorrow's date if the caller requested it or if we're saying first Vespers.
   $tomorrow = ($forcetomorrow || $tvesp == 1);
   if ($month < 7 || $dayname[0] =~ /Adv/i) { return ''; }
-  my @ftime = splice(@ftime, @ftime);
+  my @ftime = ();
   my ($fday, $fmonth);
 
-  for ($m = 8; $m < 13; $m++) {
+  for (my $m = 8; $m < 13; $m++) {
     my $t = date_to_days(1, $m - 1, $year);    #time for the first day of month
     my @d = days_to_date($t);
     my $dofweek = $d[6];
@@ -1369,6 +1467,7 @@ sub monthday {
   my $ta = date_to_days($d1, $m1 - 1, $y1);
   if ($ta < $ftime[0]) { return ''; }
 
+  my $m;
   for ($m = 9; $m < 13; $m++) {
     if ($ta < $ftime[$m - 8]) { last; }
   }
@@ -1393,8 +1492,8 @@ sub monthday {
     $weeks = 4 - $wdist;
     if ($version =~ /1960|Monastic/ && $weeks == 1) { $weeks = 0; }
   }
-  my $monthday = sprintf('%02i%01i-%01i', $m - 1, $weeks + 1, $dow);
-  return $monthday;
+  my $md = sprintf('%02i%01i-%01i', $m - 1, $weeks + 1, $dow);
+  return $md;
 }
 
 #*** officestring($basedir, $lang, $fname, $flag)
@@ -1434,12 +1533,12 @@ sub officestring($$$;$) {
   if ($m) { $m = $months[$m - 8]; }
   if ($w) { $w = $weeks[$w - 1]; }
   $rank[0] .= " $w $m";
-  $str = "$rank[0];;$rank[1];;$rank[2]";
+  my $str = "$rank[0];;$rank[1];;$rank[2]";
   if ($rank[3]) { $str .= ";;$rank[3]"; }
   $s{Rank} = $str;
   my %m = %{setupstring($datafolder, $lang, "$temporaname/$monthday.txt")};
 
-  foreach $key (keys %m) {
+  foreach my $key (keys %m) {
     if (($version =~ //i && $key =~ /Rank/i)) {
       ;
     } else {
@@ -1658,8 +1757,8 @@ sub days_to_date {
   my $count = 10957;
   my $yc = 20;
   my $add;
-  $oldcount = $count;
-  $oldyc = $yc;
+  my $oldcount = $count;
+  my $oldyc = $yc;
 
   if ($days < $count) {
     while ($days < $count) { $yc--; $add = (($yc % 4) == 0) ? 36525 : 36524; $count -= $add; }
@@ -1685,6 +1784,7 @@ sub days_to_date {
   $add = 366;
   if (($yc % 100) == 0 && ($yc % 400) > 0) { $add = 365; }
   $oldyc = $yc;
+  my $oldadd;
   while ($count <= $days) { $oldadd = $add; $oldyc = $yc; $count += $add; $add = 365; $yc++; }
   $count -= $oldadd;
   $yc = $oldyc;
@@ -1698,7 +1798,7 @@ sub days_to_date {
     $months[1] = 28;
   }
   if (($yc % 100) == 0 && ($yc % 400) > 0) { $months[1] = 28; }
-  $c = 0;
+  my $c = 0;
   while ($count <= $days) { $count += $months[$c]; $c++; }
   $c--;
   $count -= $months[$c];
@@ -1746,15 +1846,15 @@ sub date_to_days {
 
 #*** date_to_days1($day, $month-1, $year)
 # returns the number of days from the epoch 01-01-1070
-sub date_to_days1 {
-  my ($d, $m, $y) = @_;
-  if ($y > 1970 && $y < 2038) { floor(timelocal(0, 0, 12, $d, $m, $y) / 60 * 60 * 24); }
+#sub date_to_days1 {
+#  my ($d, $m, $y) = @_;
+#if ($y > 1970 && $y < 2038) { floor(timelocal(0, 0, 12, $d, $m, $y) / 60 * 60 * 24); }
 
   #my $dt = DateTime->new(year=>$y, month=>$m+1, day=>$d, hour=>6);
   #my $days = $dt->delta_days(DateTime->new(year=>1970, month=>1, day=>1))->in_units('days');
   #if ($dt->year() < 1970) {$days = -$days;}
-  return $days;
-}
+  #return $days;
+  #}
 
 #*** days_to_date1($days)
 # returns the ($sec, $min, $hour, $day, $month-1, $year-1900, $wday, $yday, 0) array from the number of days from 01-01-1970
@@ -1833,8 +1933,6 @@ sub papal_prayer($$$$;$) {
   # Get the prayer from the common.
   my (%common, $num);
   my $prayer;
-  our $missa;
-  our ($datafolder, $communename);
 
   if ($missa) {
     %common = %{setupstring($datafolder, $lang, "$communename/C4b.txt")};
@@ -1863,15 +1961,14 @@ sub papal_prayer($$$$;$) {
 #  Supreme Pontiffs, where $lang is the language.
 sub papal_antiphon_dum_esset($) {
   my $lang = shift;
-  our $datafolder, $communename;
   my %papalcommon = %{setupstring($datafolder, $lang, "$communename/C4.txt")};
   return $papalcommon{'Ant 3 summi Pontificis'};
 }
 
 # Block for conditional-handling routines.
-{
+#{
 
-  use strict;
+#use strict;
 
   my %conditional_values;
   my %stopword_weights;
@@ -1972,13 +2069,11 @@ sub papal_antiphon_dum_esset($) {
     }
     return ($strength, $result, $backscope, $forwardscope);
   }
-}
+#}
 
 #*** build_comment_line()
 #  Sets $comment to the HTML for the comment line.
 sub build_comment_line() {
-  our @dayname;
-  our ($comment, $marian_commem);
   my $commentcolor =
     ($dayname[2] =~ /(Feria)/i) ? 'black' : ($marian_commem && $dayname[2] =~ /^Commem/) ? 'blue' : 'maroon';
   $comment = ($dayname[2]) ? "<SPAN STYLE=\"font-size:82%; color:$commentcolor;\"><I>$dayname[2]</I></SPAN>" : "";
@@ -1987,10 +2082,7 @@ sub build_comment_line() {
 #*** cache_prayers()
 #  Loads Prayers.txt for each language into global hash.
 sub cache_prayers() {
-  our %prayers;
-  our ($lang1, $lang2);
-  our $datafolder;
-  my $dir = our $missa ? 'Ordo' : 'Psalterium';
+  my $dir = $missa ? 'Ordo' : 'Psalterium';
   $prayers{$lang1} = setupstring($datafolder, $lang1, "$dir/Prayers.txt");
   $prayers{$lang2} = setupstring($datafolder, $lang2, "$dir/Prayers.txt");
 }
@@ -2010,7 +2102,9 @@ sub expand {
   # TODO: Fail more drastically when the sigil is invalid.
   $line =~ s/^([&\$])// or return $line;
   my $sigil = $1;
-  our ($expand, $missa);
+   
+  # this assigns a temporary global value
+  # to our $expand which lasts until return:
   local $expand = $missa ? 'all' : $expand;
 
   #returns the link or text for & references

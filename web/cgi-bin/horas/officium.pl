@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -I.. -I.
 use utf8;
 
 # Name : Laszlo Kiss
@@ -6,15 +6,16 @@ use utf8;
 # Divine Office
 package horas;
 
-use warnings;
+use warnings 'all';
 use strict;
 
 use POSIX;
 use CGI;
 use CGI::Cookie;
-use CGI::Carp qw(fatalsToBrowser);
+#use CGI::Carp qw(fatalsToBrowser);
 use File::Basename;
 use Time::Local;
+use FindBin '$Bin';
 
 #*** collect standard items
 use DivinumOfficium::Main qw(vernaculars load_versions liturgical_color);
@@ -48,11 +49,20 @@ our @versions = (
   'Ordo Praedicatorum',
   '1960 Newcalendar'
 );
+our $local;
+our $height;
+our $height2;
+
+our $day;
+
 our $version = 'Rubrics 1960';
 
 #***common variables arrays and hashes
 #filled  getweek()
 our @dayname;    #0=Advn|Natn|Epin|Quadpn|Quadn|Pascn|Pentn 1=winner title|2=other title
+
+#file locals
+my $head;
 
 #filled by getrank()
 our $winner;     #the folder/filename for the winner of precedence
@@ -81,28 +91,79 @@ our $duplex;                                  #1=simplex-feria, 2=semiduplex-fer
 our $setupsave;
 our $setup;
 our %dialog;
-our ($lang1, $lang2, $expand, $column, $accented, $local);
 our %translate;     #translation of the skeleton labels
 
 binmode(STDOUT, ':encoding(utf-8)');
 
 our $q = new CGI;
 
-#get parameters
-getini('horas');    #files, colors
+our $htmlurl;
+our $datafolder;
+our $link;
+our $visitedlink;
+our $dialogbackground;
+our $dialogfont;
+our $border;
+our $cookieexpire;
+our $savefiles;
+
+#getini('horas');    #files, colors
+
+$htmlurl = $ENV{DIVINUM_OFFICIUM_URL};
+$htmlurl = 'https://www.divinumofficium.com/www/horas'
+  unless $htmlurl;
+$datafolder = "$Bin/../../www/horas";
+$link = 'blue';
+$visitedlink = 'blue';
+$dialogbackground = '#eeeeee';
+$dialogfont = 'maroon';
+$border = '1';
+$cookieexpire = '+1y';
+$savefiles = '0';
+
 $setupsave = strictparam('setup');
 $setupsave =~ s/\~24/\"/g;
 
 #internal script, cookies
 %dialog = %{setupstring($datafolder, '', 'horas.dialog')};
 
+our %setup;
+#variables fromn horas.setup
+our $priest;
+our $building;
+our $lang1;
+our $lang2;
+our $psalmvar;
+our $whitebground;
+our $blackfont;
+our $smallblack;
+our $redfont;
+our $initiale;
+our $largefont;
+our $smallfont;
+our $titlefont;
+our $screenheight;
+our $textwidth;
+
+our $expand;
+our $accented;
+
+#our $version;
+our $version1;
+our $version2;
+########
+
 if (!$setupsave) {
   %setup = %{setupstring($datafolder, '', 'horas.setup')};
 } else {
   %setup = split(';;;', $setupsave);
 }
-if (!$setupsave && !getcookies('horasp', 'parameters')) { setcookies('horasp', 'parameters'); }
-if (!$setupsave && !getcookies('horasgo', 'general')) { setcookies('horasgo', 'general'); }
+if (!$setupsave && !getcookies('horasp', 'parameters')) {
+  setcookies('horasp', 'parameters');
+}
+if (!$setupsave && !getcookies('horasgo', 'general')) {
+  setcookies('horasgo', 'general');
+}
 
 our $command = strictparam('command');
 #Matutinum, Laudes, Prima, Tertia, Sexta, Nona,
@@ -136,43 +197,48 @@ eval($setup{'general'});       #$expand, $version, $lang2
 
 #prepare testmode
 our $testmode = strictparam('testmode');
-if ($testmode !~ /(Season|Saint|Common)/i) { $testmode = 'regular'; }
-our $votive = strictparam('votive');
-$expandnum = strictparam('expandnum');
-$notes = strictparam('notes');
-$p = strictparam('priest');
+$testmode = 'regular'
+  unless ($testmode =~ /(Season|Saint|Common)/i);
 
+our $votive = strictparam('votive');
+our $expandnum = strictparam('expandnum');
+
+$notes = strictparam('notes');
+
+my $p;
+
+$p = strictparam('priest');
 if ($p) {
   $priest = 1;
   setsetupvalue('parameters', 0, $priest);
 }
-$p = strictparam('lang1');
 
+$p = strictparam('lang1');
 if ($p) {
   $lang1 = $p;
   setsetupvalue('parameters', 2, $lang1);
 }
-$p = strictparam('psalmvar');
 
+$p = strictparam('psalmvar');
 if ($p) {
   $psalmvar = $p;
   setsetupvalue('parameters', 3, $psalmvar);
 }
-$p = strictparam('screenheight');
 
+$p = strictparam('screenheight');
 if ($p) {
   $screenheight = $p;
-  setsetupvalue('parametrs', 12, $screenheight);
+  setsetupvalue('parameters', 12, $screenheight);
 }
-$p = strictparam('textwidth');
 
+$p = strictparam('textwidth');
 if ($p) {
   $textwidth = $p;
-  setsetupvalue('parametrs', 13, $textwidth);
+  setsetupvalue('parameters', 13, $textwidth);
 }
 
 #expand (all, psalms, nothing, skeleton) parameter
-$flag = 0;
+my $flag = 0;
 $p = strictparam('lang2');
 if ($p) { $lang2 = $p; $flag = 1; }
 $p = strictparam('version');
@@ -191,7 +257,7 @@ if ($flag) {
 if (!$expand) { $expand = 'all'; }
 if (!$version) { $version = 'Rubrics 1960'; }
 if (!$lang2) { $lang2 = 'English'; }
-$only = ($lang1 =~ /^$lang2$/i) ? 1 : 0;
+our $only = ($lang1 =~ /^$lang2$/i) ? 1 : 0;
 setmdir($version);
 
 # save parameters
@@ -209,18 +275,21 @@ build_comment_line();
 
 #prepare main pages
 my $h = $hora;
-
 if ($h =~ /(Ante|Matutinum|Laudes|Prima|Tertia|Sexta|Nona|Vespera|Completorium|Post|Setup)/i) {
   $h = " $1";
 } else {
   $h = '';
 }
-$title = "Divinum Officium$h";
+my $title = "Divinum Officium$h";
 $title =~ s/Vespera/Vesperae/i;
-@horas = getdialogcolumn('horas', '~', 0);
-for ($i = 0; $i < 10; $i++) { $hcolor[$i] = 'blue'; }
-$completed = getcookie1('completed');
+my @horas = getdialogcolumn('horas', '~', 0);
+my @hcolor;
+for (my $i = 0; $i < 10; $i++) {
+  $hcolor[$i] = 'blue';
+}
+my $completed = getcookie1('completed');
 
+our $date1;
 if ( $date1 eq gettoday()
   && $command =~ /pray/i
   && $completed < 8
@@ -229,17 +298,21 @@ if ( $date1 eq gettoday()
   $completed++;
   setcookie1('completed', $completed);
 }
-for ($i = 1; $i <= $completed; $i++) { $hcolor[$i] = 'maroon'; }
-my @local = splice(@local, @local);
 
-#if (opendir(DIR, "$datafolder/Latin/Tabulae")) {
-#  my @a = readdir(DIR);
-#  close DIR;
-#  foreach my $item (@a) {
-#    if ($item =~ /K([A-Z]+)/) {push (@local, $1);}
-#  }
-#  unshift(@local, 'none');
-#}
+for (my $i = 1; $i <= $completed; $i++) {
+  $hcolor[$i] = 'maroon';
+}
+
+my @local = ();
+my $headline;
+my $pmode;
+
+
+our $searchind;
+our $comment;
+
+my $addlocal;
+
 if ($command =~ /kalendar/) {    # kalendar widget
   print "Access-Control-Allow-Origin: *\n";
   print "Content-type: text/html; charset=utf-8\n";
@@ -278,7 +351,7 @@ PrintTag
     headline($head);
 
     #eval($setup{'parameters'});
-    $background = ($whitebground) ? "BGCOLOR=\"white\"" : "BACKGROUND=\"$htmlurl/horasbg.jpg\"";
+    my $background = ($whitebground) ? "BGCOLOR=\"white\"" : "BACKGROUND=\"$htmlurl/horasbg.jpg\"";
     horas($command);
     print << "PrintTag";
 <P ALIGN=CENTER>
@@ -434,7 +507,7 @@ sub headline2 {
 #*** headline($head) prints headline for main and pray
 sub headline {
   my $head = shift;
-  $headline =~ s{!(.*)}{<FONT SIZE=1>$1</FONT>}s;
+  my $headline =~ s{!(.*)}{<FONT SIZE=1>$1</FONT>}s;
   print << "PrintTag";
 <P ALIGN=CENTER><FONT COLOR=$daycolor>$headline<BR></FONT>
 $comment<BR><BR>
