@@ -1,4 +1,7 @@
 use utf8;
+use v5.14;
+use strict;
+use warnings 'all';
 
 # Name : Laszlo Kiss
 # Date : 01-20-08
@@ -6,9 +9,70 @@ use utf8;
 
 # Defines ScriptFunc and ScriptShortFunc attributes.
 use horas::Scripting;
+
+# Globals
+our $Ck;
+our $class;
+our $command;
+our $column;
+our $canticum;
+our %chant;
+our $chantmatins; # useless, unused
+our $datafolder;
+our $day;
+our @dayname;
+our $dayofweek;
+our $duplex;
+our $error;
+our $expand;
+our $expandnum;
+our $Hk;
+our $initiale;
+our $hora;
+our $nextdayofweek;
+our $notes;
+our $largefont;
+our $laudes;
+our $litaniaflag;
+our $only;
+our %prayers;
+our $priest;
+our $psalmnum1;
+our $psalmnum2;;
+our $psalmvar;
+our $lang1;
+our $lang2;
+our $month;
+our $redfont;
+our $rule;
+our $searchind;
+our $smallblack;
+our $smallfont;
+our $text1;
+our $text2;
+our %translate;
+our $Tk;
+our $tlang;
+our $tvesp;
+our $version;
+our $version1;
+our $version2;
+our $voicecolumn; # useless, unused
+our $winner;
+our %winner;
+our %winner2;
+our $year;
+
+
+# Module locals
+my $expandind;
 my @lines;
 my $precesferiales;
-$a = 1;
+my $psalmfolder;
+
+state $omit_regexp;
+
+#$a = 1;
 
 #*** horas($hora)
 # collects and prints the officium for the given $hora
@@ -19,27 +83,36 @@ $a = 1;
 sub horas {
   $command = shift;
   $hora = $command;
-  our $canticum = 0;
-  our $reciteindex = 0;
-  our $recitelimit = 0;
+
+  $canticum = 0;
   $tlang = ($lang1 !~ /Latin/) ? $lang1 : $lang2;
-  our %translate;
   $translate{$lang1} = setupstring($datafolder, $lang1, "Psalterium/Translate.txt");
   $translate{$lang2} = setupstring($datafolder, $lang2, "Psalterium/Translate.txt");
   cache_prayers();
   %chant = %{setupstring($datafolder, 'Latin', "Psalterium/Chant.txt")};
   $column = 1;
-  if ($Ck) { $version = $version1; setmdir($version); precedence(); }
+  if ($Ck) {
+    $version = $version1;
+    setmdir($version); precedence();
+  }
+
+  my @script1;
+  my @script2;
+
   @script1 = getordinarium($lang1, $command);
   @script1 = specials(\@script1, $lang1);
   $column = 2;
   if ($Ck) { $version = $version2; setmdir($version); precedence(); }
   @script2 = getordinarium($lang2, $command);
   @script2 = specials(\@script2, $lang2);
+  
   $expandind = 0;
-  if (!$Tk && !$Hk) { $expandnum = strictparam('expandnum'); }
+  if (!$Tk && !$Hk) {
+    $expandnum = strictparam('expandnum');
+  }
   table_start();
-  $ind1 = $ind2 = 0;
+  my $ind1 = 0;
+  my $ind2 = 0;
   $searchind = 0;
 
   if ($version !~ /(Monastic|1570|1955|1960|Newcal|Praedicatorum)/i) {
@@ -130,6 +203,7 @@ sub resolve_refs {
   my @t = split("\n", $t);
 
   #handles expanding for skeleton
+  my $expandflag;
   if ($t[0] =~ /#/) {
     if ($expandind == $expandnum) {
       $expandflag = 1;
@@ -153,6 +227,7 @@ sub resolve_refs {
   }
   my @resolved_lines;    # Array of blocks expanded from lines.
   my $prelude = '';      # Preceding continued lines.
+  my $line;
 
   #cycle by lines
   for (my $it = 0; $it < @t; $it++) {
@@ -169,7 +244,7 @@ sub resolve_refs {
         $line = expand($line, $lang, $t[$it - 1]);
 
         # If the psalm has a cross, then so should the antiphon.
-        @resolved_lines[-1] .= setfont($smallfont, " \x{2021}") if $line =~ /\x{2021}/;
+        $resolved_lines[-1] .= setfont($smallfont, " \x{2021}") if $line =~ /\x{2021}/;
       } else {
         $line = expand($line, $lang);
       }
@@ -200,7 +275,7 @@ sub resolve_refs {
 
     #small omitted title
     if ($line =~ /^\s*\!\!\!(.*)/) {
-      $l = $1;
+      my $l = $1;
       $line = setfont($smallblack, $l);
     }
 
@@ -215,7 +290,7 @@ sub resolve_refs {
 
     #red line
     elsif ($line =~ /^\s*\!(.*)/) {
-      $l = $1;
+      my $l = $1;
       $line = setfont($redfont, $l);
     }
     $line =~ s{/:(.*?):/}{setfont($smallfont, $1)}e;
@@ -256,23 +331,22 @@ sub resolve_refs {
 #*** Pater noster($lang)
 # returns the text of the prayer without Amen, setting V. and R. to the last 2 lines
 sub pater_noster : ScriptFunc {
-  our %prayers;
   return $prayers{shift()}->{'Pater_noster1'};
 }
 
 #*** teDeum($lang)
 # returns the text of the hymn
 sub teDeum : ScriptFunc {
-  my $lang = shift;
   our %prayers;
+  my $lang = shift;
   return "\n_\n!Te Deum\n$prayers{$lang}->{'Te Deum'}";
 }
 
 #*** Alleluia($lang)
 # return the text Alleluia or Laus tibi
 sub Alleluia : ScriptFunc {
-  my $lang = shift;
   our %prayers;
+  my $lang = shift;
   my $text = $prayers{$lang}->{'Alleluia'};
   my @text = split("\n", $text);
 
@@ -299,7 +373,6 @@ sub Alleluia_ant {
 #*** Septuagesima_vesp
 # Determines whether we're saying first Vespers of Septuagesima Sunday.
 sub Septuagesima_vesp {
-  our ($dayofweek, @dayname, $hora);
   return ($dayofweek == 6 && $dayname[0] =~ /Quadp1/ && $hora =~ /Vespera/i);
 }
 
@@ -307,7 +380,6 @@ sub Septuagesima_vesp {
 # Determines whether the Gloria at the end of the psalms should be omitted
 # owing to the Triduum.
 sub triduum_gloria_omitted() {
-  our (@dayname, $dayofweek, $tvesp);
 
   # TODO: A much more elegant check would be to see what *today's office* is,
   # checking for Quad6-[456], but this information is not reliably available.
@@ -320,24 +392,24 @@ sub triduum_gloria_omitted() {
 #*** Gloria
 # returns the text or the omit notice
 sub Gloria : ScriptFunc {
+  our %prayers;
   my $lang = shift;
   if (triduum_gloria_omitted()) { return ""; }
-  our %prayers;
   if ($rule =~ /Requiem gloria/i) { return $prayers{$lang}->{Requiem}; }
   return $prayers{$lang}->{'Gloria'};
 }
 
 sub Gloria1 : ScriptFunc {    #* responsories
+  our %prayers;
   my $lang = shift;
   if ($dayname[0] =~ /(Quad5|Quad6)/i && $winner !~ /Sancti/i && $rule !~ /Gloria responsory/i) { return ""; }
-  our %prayers;
   return $prayers{$lang}->{'Gloria1'};
 }
 
 sub Gloria2 : ScriptFunc {    #*Invitatorium
+  our %prayers;
   my $lang = shift;
   if ($dayname[0] =~ /(Quad[56])/i) { return ""; }
-  our %prayers;
   if ($rule =~ /Requiem gloria/i) { return $prayers{$lang}->{Requiem}; }
   return $prayers{$lang}->{'Gloria'};
 }
@@ -345,8 +417,8 @@ sub Gloria2 : ScriptFunc {    #*Invitatorium
 #*** Dominus_vobiscum
 #returns the text of the 'Domine exaudi' for non priests
 sub Dominus_vobiscum : ScriptFunc {
-  my $lang = shift;
   our %prayers;
+  my $lang = shift;
   my $text = $prayers{$lang}->{'Dominus'};
   my @text = split("\n", $text);
 
@@ -378,8 +450,8 @@ sub Dominus_vobiscum2 : ScriptFunc {    #* officium defunctorum
 #*** Benedicamus_Domino
 # adds Alleluia, alleluia for Pasc0
 sub Benedicamus_Domino : ScriptFunc {
-  my $lang = shift;
   our %prayers;
+  my $lang = shift;
   my $text = $prayers{$lang}->{'Benedicamus Domino'};
   if (Septuagesima_vesp()) { $text = $prayers{$lang}->{'Benedicamus Domino1'}; }
   if ($dayname[0] !~ /Pasc0/i || $hora !~ /(Laudes|Vespera)/i) { return $text; }
@@ -433,7 +505,8 @@ sub psalm : ScriptFunc {
     $antline = $a[4];
   }
 
-  if ($ck) {
+  #if ($ck) {
+  if ($Ck) {
     if ($lang =~ $lang1) {
       $version = $version1;
     } else {
@@ -493,14 +566,15 @@ sub psalm : ScriptFunc {
   my $t = '';
 
   if ($num > 150 && $num < 300 && @lines) {
-    $line = $lines[0];
+    my $line = $lines[0];
 
     if ($line =~ /\s*[(]?(.*?)\s+[*]/i) {
       $t = setfont($redfont, $1) . settone(1) . $pnum;
     }
   }
   if (!$t) { $t = setfont($redfont, "$str $num") . settone(1) . $pnum; }
-  my $v1 = $v = 0;
+  my $v = 0;
+  my $v1 = 0;
   my $v2 = 1000;
 
   # Extract limits of the division of the psalm.
@@ -517,7 +591,7 @@ sub psalm : ScriptFunc {
   if (@lines) {
     my $first = ($antline) ? 1 : 0;
 
-    foreach $line (@lines) {
+    foreach my$line (@lines) {
 
       # Interleave antiphon into the psalm "Venite exsultemus".
       if ($psnum == 94 && $line =~ /^\s*\$ant\s*$/) {
@@ -526,6 +600,7 @@ sub psalm : ScriptFunc {
         next;
       }
 
+      my $v;
       if ($line =~ /^\s*([0-9]+)\:([0-9]+)/) {
         $v = $2;
       } elsif ($line =~ /^\s*([0-9]+)/) {
@@ -533,13 +608,15 @@ sub psalm : ScriptFunc {
       }
       if ($v < $v1 && $v > 0) { next; }
       if ($v > $v2) { last; }
-      $lnum = '';
+      my $lnum = '';
 
       if ($line =~ /^([0-9]*[\:]*[0-9]+)(.*)/) {
         $lnum = setfont($smallfont, $1);
         $line = $2;
       }
       my $rest;
+      my $before;
+      my $this;
 
       if ($line =~ /(.*?)(\(.*?\))(.*)/) {
         $rest = $3;
@@ -594,7 +671,7 @@ sub getantcross {
   my $pind = 0;
   my $aind = 0;
 
-  $psalmline1 = $psalmline;
+  my $psalmline1 = $psalmline;
   $psalmline = '';
   $antline = '';
 
@@ -730,9 +807,7 @@ sub settone {
 }
 
 sub adjust_refs {
-  use strict;
   my ($name, $lang) = @_;
-  our ($rule, @dayname, $winner, $smallfont, $priest);
 
   if ($name =~ /\&Gloria/ && $rule =~ /Requiem gloria/i) {
     return '$Requiem';
@@ -755,7 +830,6 @@ sub adjust_refs {
       || $name =~ /&Dominus_vobiscum2/i)
     )
   {
-    our %prayers;
     my $text = $prayers{$lang}->{'Dominus'};
     my @text = split("\n", $text);
     return $text[4];
@@ -822,9 +896,6 @@ sub setlink {
 
 sub get_link_name {
   my $name = shift;
-  our $priest;
-  our @dayname;
-  our $hora;
 
   if ($name =~ /\&Gloria1/i) {
     $name = "\&gloria";
@@ -878,9 +949,6 @@ sub ant_Benedictus : ScriptFunc {
 
   my $num = shift;
   my $lang = shift;
-  our ($version, $winner);
-  our ($month, $day);
-  our $duplex;
 
   if (our $ck) {
     if ($lang =~ our $lang1) {
@@ -964,11 +1032,11 @@ sub canticum : ScriptFunc {
   $psalmfolder = 'PiusXII' if ($lang eq 'Latin' && $psalmvar);
   my $fname = checkfile($lang, "$psalmfolder/Psalm$psnum.txt");
 
-  if (@w = do_read($fname)) {
+  if (my @w = do_read($fname)) {
     $w[0] =~ s/\!//;
     $w .= setfont($redfont, shift(@w)) . settone(2) . "\n";
 
-    foreach $item (@w) {
+    foreach my $item (@w) {
       if ($item =~ /^([0-9]+\:)*([0-9]+) (.*)/) {
         my $rest = $3;
         my $num = "$1$2";
@@ -1017,14 +1085,14 @@ sub martyrologium : ScriptFunc {
   my $mobile = '';
   my $hd = 0;
   if (exists($a{$a})) { $mobile = "$a{$a}\n"; }
-  if ($month == 10 && $dayofweek == 6 && $day > 23 && $day < 31 && exists($a{'10-DU'})) { $mobile = $m{'10-DU'}; }
+  if ($month == 10 && $dayofweek == 6 && $day > 23 && $day < 31 && exists($a{'10-DU'})) { $mobile = $a{'10-DU'}; }
   if ($a =~ /Pasc0\-1/i) { $hd = 1; }
   if ($winner{Rank} =~ /ex C9/i && exists($a{'Defuncti'})) { $mobile = $a{'Defuncti'}; $hd = 1; }
   if ($month == 11 && $day == 14 && $version =~ /Monastic/i) { $mobile = $a{'DefunctiM'}; $hd = 1; }
 
   #if ($month == 12 && $day == 25 && exists($a{'Nativity'})) {$mobile = $a{'Nativity'}; $hd = 1;}
   if ($hd == 1) { $t = "v. $mobile" . "_\n$t"; $mobile = ''; }
-  $fname = nextday($month, $day, $year);
+  my $fname = nextday($month, $day, $year);
   my ($m, $d) = split('-', $fname);
   my $y = ($m == 1 && $d == 1) ? $year + 1 : $year;
 
@@ -1060,7 +1128,7 @@ sub martyrologium : ScriptFunc {
     }
     my $prefix = "v. ";
 
-    foreach $line (@a) {
+    foreach my $line (@a) {
       if (length($line) > 3) {
         $t .= "$prefix$line\n";
       } else {
@@ -1170,8 +1238,8 @@ sub luna {
   );
   my $sfx1 = (($day % 10) == 1) ? 'st' : (($day % 10) == 2) ? 'nd' : (($day % 10) == 3) ? 'rd' : 'th';
   my $t = (date_to_days($day, $month - 1, $year) - $edays + $epact2008);
-  $mult = floor($t / $lunarmonth);
-  $dist = floor($t - $mult * $lunarmonth - .25);
+  my $mult = floor($t / $lunarmonth);
+  my $dist = floor($t - $mult * $lunarmonth - .25);
   if ($dist <= 0) { $dist = 30 + $dist; }
   my $sfx2 = (($dist % 10) == 1) ? 'st' : (($dist % 10) == 2) ? 'nd' : (($dist % 10) == 3) ? 'rd' : 'th';
   $day = $day + 0;
@@ -1195,7 +1263,7 @@ sub special : ScriptFunc {
   my $name = shift;
   my $lang = shift;
   my $r = '';
-  %w = (columnsel($lang)) ? %winner : %winner2;
+  my %w = (columnsel($lang)) ? %winner : %winner2;
 
   if (exists($w{$name})) {
     $r = "!Special $name\n_\n" . chompd($w{$name}) . "\n";
@@ -1239,8 +1307,8 @@ sub setasterisk {
 
   if ($line =~ /(.*?)[\.\:\;\?\!](.*)$/ && length($2) > $lp2) {
     while ($l =~ /(.*)([\.\:\;\?\!])(.*?)$/) {
-      $breaker = $2;
-      $after = $3;
+      my $breaker = $2;
+      my $after = $3;
       $l = $1;
 
       if (length("$after$t") > $lp2) {
@@ -1255,8 +1323,8 @@ sub setasterisk {
   my $b = ($line =~ /(.*?),(.*)$/ && length($2) > $lp2) ? ',' : ' ';
 
   while ($l =~ /(.*)($b)(.*?)$/) {
-    $breaker = $2;
-    $after = $3;
+    my $breaker = $2;
+    my $after = $3;
     $l = $1;
     if (length($l) < $lp2 && $b eq ',') { $b = ' '; $l = $line; $t = ''; next; }
 
@@ -1310,7 +1378,7 @@ sub ensure_double_alleluia(\$$) {
   unless (depunct($$text) =~ /$alleluia_depunct\s*$/i) {
 
     # Add a double 'alleluia' and move the asterisk.
-    $$text =~ s/\s*\*\s*(.)/ \l\1/;
+    $$text =~ s/\s*\*\s*(.)/ \l$1/;
     $$text =~ s/\W*?(\s*)$/, * $alleluia$1/;
   }
 }
@@ -1396,3 +1464,4 @@ sub postprocess_short_resp(\@$) {
 sub officium_defunctorum() {
   return our $votive =~ /C9|Defunctorum/i;
 }
+1;

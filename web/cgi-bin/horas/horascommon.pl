@@ -1,13 +1,13 @@
 package horas;
+use v5.14;
 use utf8;
-use v5.10;
+use warnings 'all';
+use strict; 
 
 # Name : Laszlo Kiss
 # Date : 01-25-08
 # horas common files to reconcile tempora & sancti
 # also for missa
-use warnings 'all';
-use strict; 
 
 use horas::Scripting qw(dispatch_script_function parse_script_arguments);
 #use horas::dialogcommon;
@@ -258,8 +258,8 @@ sub getrank {
   $dayname[0] =~ s/\s*$//g;
   $dayname[0] =~ s /^\s*//g;
 
-  my %tempora = {};
-  my %saint = {};
+  my %tempora = ();
+  my %saint = ();
   my $trank = '';
   my $tname = '';
   my $srank = '';
@@ -317,14 +317,22 @@ sub getrank {
   $dirge = 0;
 
   if (@lines = do_read("$datafolder/../horas/Latin/Tabulae/Tr$vtrans$year.txt")) {
-    my $tr = join('', @lines);
-    $tr =~ s/\=/\;\;/g;
-    %transfer = split(';;', $tr);
-    if (exists($transfer{dirge})) { $dirgeline = $transfer{dirge}; }    #&& !$caller
+    %transfer = ();
+    for(@lines) {
+      s/;;$//;
+      my ($k, $v) = split /=/;
+      $transfer{$k} = $v if ($v);
+    }
+    #my $tr = join('', @lines);
+    #$tr =~ s/\=/\;\;/g;
+    #%transfer = split(';;', $tr, -1);
+    if (exists($transfer{dirge})) {
+      $dirgeline = $transfer{dirge};
+    }    #&& !$caller
   }
   $transfer = $transfer{$sday};
 
-  if ($transfer =~ /v$/ && !(-e "$datafolder/Latin/$sanctiname/$transfer.txt")) {
+  if ($transfer && $transfer =~ /v$/ && !(-e "$datafolder/Latin/$sanctiname/$transfer.txt")) {
     $transfervigil = $transfer;
     $transfervigil =~ s/v$//;
     $transfer = '';
@@ -341,8 +349,8 @@ sub getrank {
     $tn = "$temporaname/$dayname[0]-$dayofweek";
     if (exists($transfertemp{$tn})) { $tn = $transfertemp{$tn}; }
   }
-  if (exists($transfertemp{$sday}) && $transfertemp{$sday} =~ /tempora/i) { $tn = $transfertemp{$sday}; }
-  if (exists($transfer{$sday}) && $transfer{$sday} =~ /tempora/i) { $tn = $transfer{$sday}; }
+  if (defined($transfertemp{$sday}) && $transfertemp{$sday} =~ /tempora/i) { $tn = $transfertemp{$sday}; }
+  if (defined($transfer{$sday}) && $transfer{$sday} =~ /tempora/i) { $tn = $transfer{$sday}; }
   my $tn1 = '';
   my $tn1rank = '';
   my $nday = nextday($month, $day, $year);
@@ -372,7 +380,7 @@ sub getrank {
         $tn1 = $transfertemp{$tn1};
       } elsif (exists($transfer{$tn1})) {
         $tn1 = $transfer{$tn1};
-      } elsif (exists($transfer{$nday}) && $transfer{$nday} =~ /tempora/i) {
+      } elsif (defined($transfer{$nday}) && $transfer{$nday} =~ /tempora/i) {
         $tn1 = $transfer{$nday};
       }
 
@@ -424,8 +432,8 @@ sub getrank {
   @trank = split(";;", $trank);
   my @tn1 = split(';;', $tn1rank);
 
-  if ($tn1[2] >= $trank[2]) {
-    $tname = "$tn1.txt";
+  if (@tn1 && $tn1[2] >= $trank[2]) {
+  $tname = "$tn1.txt";
     %tempora = %tn1;
     $trank = $tempora{Rank};
     if ($version =~ /1960/ && $tn1 =~ /Nat1/i && $day =~ /(25|26|27|28)/) { $trank =~ s/;;5/;;4/; }
@@ -442,9 +450,9 @@ sub getrank {
   #handle sancti
   $sn = "$sanctiname/$kalendar{$sday}";
 
-  if ($transfertemp =~ /Sancti/) {
+  if ($transfertemp && $transfertemp =~ /Sancti/) {
     $sn = $transfertemp;
-  } elsif ($transfer =~ /Sancti/) {
+  } elsif ($transfer && $transfer =~ /Sancti/) {
     $sn = $transfer;
   } elsif (transfered($sn)) {
     $sn = '';
@@ -508,13 +516,13 @@ sub getrank {
   #check for concurrence
   my $cday = '';
   my $crank = '';
-  my %csaint = {};
+  my %csaint = ();
   my $vflag = 0;
   my @crank;
 
   $cday = nextday($month, $day, $year);
-  if ($transfer{$cday} !~ /tempora/i && transfered($cday)) { $cday = 'none'; }
-  if (exists($transfer{$cday}) && $transfer{$cday} !~ /Tempora/i) { $cday = $transfer{$cday}; }
+  if ($transfer{$cday} && $transfer{$cday} !~ /tempora/i && transfered($cday)) { $cday = 'none'; }
+  if (defined($transfer{$cday}) && $transfer{$cday} !~ /Tempora/i) { $cday = $transfer{$cday}; }
   if ($tname =~ /Nat/ && $cday =~ /Nat/) { $cday = 'none'; }
 
   if ($hora =~ /(vespera|completorium)/i) {
@@ -671,7 +679,7 @@ sub getrank {
   }
 
   #if ($svesp == 3 && $srank[2] >= 5 && $dayofweek == 6) {$srank[2] += 5;}  ?????????
-  my @cr = split(';;', $csaint{Rank});
+  #  my @cr = split(';;', $csaint{Rank});
 
   # In Festo Sanctae Mariae Sabbato according to the rubrics.
   if ( $dayname[0] !~ /(Adv|Quad[0-6])/i
@@ -783,6 +791,9 @@ sub getrank {
     }
 
     if ($srank[3] =~ /^(ex|vide)\s*(C[0-9]+[a-z]*)/i) {
+      no warnings 'uninitialized'; # :-(
+      # this result is sometimes '   []', but
+      # then it gets replaced -ajm 063021
       $dayname[1] .= " $communetype $communesname{$commune} [$commune]";
     }
     if ($hora =~ /vespera/i && $trank[2] =~ /Feria/i) { $trank = ''; @trank = undef; }
@@ -824,7 +835,7 @@ sub getrank {
       $comrank = $crank[2];
       $cvespera = 4 - $svesp;
       $marian_commem = ($crank[3] =~ /C1[0-9]/);
-    } elsif ($crank[2] < 6) {
+    } elsif (!defined($crank[2]) || $crank[2] < 6) {
       $dayname[2] = '';
       $commemoratio = '';
     }
@@ -834,7 +845,7 @@ sub getrank {
       my %scrip = %{officestring($datafolder, 'Latin', $tname)};
 
       if (!exists($w{"Lectio1"})
-        && exists($scrip{Lectio1})
+        && defined($scrip{Lectio1})
         && $scrip{Lectio1} !~ /evangelii/i
         && ($w{Rank} !~ /\;\;ex / || ($version =~ /trident/i && $w{Rank} !~ /\;\;(vide|ex) /i)))
       {
@@ -1248,10 +1259,16 @@ sub precedence {
   #    exists($scriptura{Rank}))
   #  {$winner{Rank} = $scriptura{Rank}; $winner2{Rank} = $scriptura2{Rank};}
   #no transfervigil if emberday
-  if ( $winner{Rank} =~ /Quat[t]*uor/i
-    || $commemoratio{Rank} =~ /Quat[t]*uor/i
-    || $scriptura{Rank} =~ /Quat[t]*uor/i)
-  {
+  if (
+      defined($winner{Rank}) &&
+      $winner{Rank} =~ /Quat[t]*uor/i
+      ||
+      defined($commemoratio{Rank}) &&
+      $commemoratio{Rank} =~ /Quat[t]*uor/i
+      ||
+      defined($scriptura{Rank}) &&
+      $scriptura{Rank} =~ /Quat[t]*uor/i
+    ) {
     $transfervigil = '';
   }
 
@@ -1259,7 +1276,7 @@ sub precedence {
     %commune = %{officestring($datafolder, $lang1, $commune)};
     %commune2 = %{officestring($datafolder, $lang2, $commune)};
 
-    if (exists($commune{Responsory7c})) {
+    if (defined($commune{Responsory7c})) {
       my @a = split("\n", $commune{Responsory7});
       my @b = split("\n", $scriptura{Responsory1});
 
@@ -1508,7 +1525,13 @@ sub officestring($$$;$) {
 
   if ($fname !~ /tempora[M]*\/(Pent|Epi)/i) {
     %s = updaterank(setupstring($basedir, $lang, $fname));
-    if ($version =~ /1960/ && $s{Rank} =~ /Feria.*?(III|IV) Adv/i && $day > 16) { $s{Rank} =~ s/;;2/;;3/; }
+    if (
+      $version =~ /1960/
+      && defined($s{Rank}) && $s{Rank} =~ /Feria.*?(III|IV) Adv/i
+      && $day > 16
+    ) {
+      $s{Rank} =~ s/;;2/;;3/;
+    }
     return \%s;
   }
 
@@ -1620,7 +1643,10 @@ sub setheadline {
   my $name = shift;
   my $rank = shift;
 
-  if ((!$name || !$rank) && exists($winner{Rank}) && $winner !~ /Epi1\-0a/i) {
+  if ((!$name || !$rank)
+    && exists($winner{Rank})
+    && $winner !~ /Epi1\-0a/i
+  ) {
     my @rank = split(';;', $winner{Rank});
     $name = $rank[0];
     $rank = $rank[2];

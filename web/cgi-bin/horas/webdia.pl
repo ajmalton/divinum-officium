@@ -1,12 +1,12 @@
 package horas;
 use utf8;
-use v5.10;
+use v5.14;
+use warnings 'all';
+use strict;
 
 # Name : Laszlo Kiss
 # Date : 01-11-04
 # WEB dialogs
-use warnings 'all';
-use strict;
 
 our $q;  # CGI
 
