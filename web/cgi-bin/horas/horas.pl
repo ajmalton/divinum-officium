@@ -37,6 +37,7 @@ our $litaniaflag;
 our $only;
 our %prayers;
 our $priest;
+our $precesferiales;
 our $psalmnum1;
 our $psalmnum2;;
 our $psalmvar;
@@ -67,7 +68,6 @@ our $year;
 # Module locals
 my $expandind;
 my @lines;
-my $precesferiales;
 my $psalmfolder;
 
 state $omit_regexp;

@@ -270,7 +270,7 @@ our $psalmnum2 = 0;
 our $octavam = '';    #to avoid duplication of commemorations
 
 # prepare title
-$daycolor = liturgical_color($dayname[1], $commune);
+my $daycolor = liturgical_color($dayname[1], $commune);
 build_comment_line();
 
 #prepare main pages
