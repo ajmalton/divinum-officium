@@ -507,7 +507,7 @@ sub headline2 {
 #*** headline($head) prints headline for main and pray
 sub headline {
   my $head = shift;
-  my $headline =~ s{!(.*)}{<FONT SIZE=1>$1</FONT>}s;
+  $headline =~ s{!(.*)}{<FONT SIZE=1>$1</FONT>}s;
   print << "PrintTag";
 <P ALIGN=CENTER><FONT COLOR=$daycolor>$headline<BR></FONT>
 $comment<BR><BR>
