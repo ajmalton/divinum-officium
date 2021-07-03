@@ -9,6 +9,7 @@ use strict;
 # dialog/setup related subs
 
 use horas::horascommon;
+use horas::do_io;
 
 our %dialog;
 our %setup;

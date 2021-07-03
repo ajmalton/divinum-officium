@@ -5,7 +5,6 @@ use warnings;
 # Temporary measure: if we got here, the parent directory is on the library
 # search path, so this will work.
 BEGIN {
-
   package DivinumOfficium::FileIO;
   require "horas/do_io.pl";
 }

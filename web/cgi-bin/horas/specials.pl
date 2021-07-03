@@ -73,6 +73,8 @@ my @s;
 my %cc = ();
 my $ccind = 0;
 my $octavcount = 0;
+my $label;
+my $popeclass;
 
 
 #*** specials(\@s, $lang)
@@ -113,7 +115,7 @@ sub specials {
       next;
     }
     if ($skipflag) { push(@s, "\n"); }
-    my $label = $item;
+    $label = $item;
     $item =~ s/\n//g;
     $skipflag = 0;
     my $ite = $item;
@@ -918,8 +920,7 @@ sub psalmi_minor {
   my @ant = split('\*', $ant);
   postprocess_ant($ant, $lang);
   my $ant1 = ($version !~ /1960|monastic/i) ? $ant[0] : $ant;    #difference between 1955 and 1960
-  #setcomment($label, 'Source', $comment, $lang, $prefix); # $label is undef here
-  setcomment('', 'Source', $comment, $lang, $prefix);
+  setcomment($label, 'Source', $comment, $lang, $prefix);
   $psalms =~ s/\s//g;
   my @psalm = split(',', $psalms);
 
@@ -1226,7 +1227,7 @@ sub oratio {
     ? ('Preces', 2)
     : ('Source', ($winner =~ /sancti/i) ? 3 : 2), $lang
   );
-  $ind = ($hora =~ /vespera/i) ? $vespera : 2;
+  my $ind = ($hora =~ /vespera/i) ? $vespera : 2;
 
   # Special handling for days during the suppressed octave of the Epiphany.
   # Before the Sunday formerly in the octave, the collect of the Epiphany is
@@ -1247,6 +1248,7 @@ sub oratio {
     %w = %{setupstring($datafolder, $lang, "$temporaname/$name.txt")};
   }
 
+  my $w;
   if ($dayofweek > 0 && exists($w{"OratioW"}) && $rank < 5) {
     $w = $w{"OratioW"};
   } else {
@@ -1303,7 +1305,7 @@ sub oratio {
   }
 
   #* deletes added commemoratio
-  $comm_regex_str = "!(" . &translate('Commemoratio', $lang) . "|Commemoratio)";
+  my $comm_regex_str = "!(" . &translate('Commemoratio', $lang) . "|Commemoratio)";
 
   if (
     ($w =~ /(?<prelude>.*?)$comm_regex_str/is && $hora !~ /(laudes|vespera)/i)
@@ -1432,7 +1434,7 @@ sub oratio {
     if ($w) { setcc($w, 3, setupstring($datafolder, $lang, $commemoratio)); }
   }
   my $key;
-  if ($ordostatus =~ /Ordo/i) { return %cc; }
+  #if ($ordostatus =~ /Ordo/i) { return %cc; }
 
   foreach my $key (sort keys %cc) {
     if (length($s[-1]) > 3) { push(@s, '_'); }
@@ -1564,6 +1566,7 @@ sub commemoratio {
   if ($hora =~ /vespera/i && $winner =~ /Sancti/i && $rank >= 5 && nooctnat()) { return; }
   my %w;
 
+  my $ite;
   if ($item =~ /winner/i) {
     %w = (columnsel($lang)) ? %winner : %winner2;
     $ite = $winner;
@@ -1680,16 +1683,19 @@ sub getcommemoratio {
     if ($file =~ /^C/) { $file = "Commune/$file"; }
     %c = %{setupstring($datafolder, $lang, $file)};
   } else {
-    %$c = {};
+    #%$c = {};   # surely not
+    %c = {};
   }
   if (!$rank) { $rank[0] = $w{Name}; }    #commemoratio from commune
   my $o = $w{Oratio};
-  if ($o =~ /N\./) { replaceNdot($w, $lang); }
+  if ($o =~ /N\./) {
+    $o = replaceNdot($o, $lang);
+  }
 
   if (!$o && $w{Rule} =~ /Oratio Dominica/i) {
     $wday =~ s/\-[0-9]/-0/;
     $wday =~ s/Epi1\-0/Epi1-0a/;
-    my %w1 = %{officestring($datafolder, $lang, $wday, ($i == 1) ? 1 : 0)};
+    my %w1 = %{officestring($datafolder, $lang, $wday, ($ind == 1) ? 1 : 0)};
 
     if (exists($w1{'OratioW'})) {
       $o = $w1{'OratioW'};
@@ -1698,7 +1704,7 @@ sub getcommemoratio {
     }
   }
   if (!$o) { $o = $w{"Oratio $ind"}; }
-  if (!$o) { $i = 4 - $ind; $o = $w{"Oratio $i"}; }
+  if (!$o) { my $i = 4 - $ind; $o = $w{"Oratio $i"}; }
   if (!$o) { $o = $c{"Oratio"}; }
 
   # Special processing for Common of Supreme Pontiffs.
@@ -1710,7 +1716,7 @@ sub getcommemoratio {
   }
   if (!$o) { return ''; }
   my $a = $w{"Ant $ind"};
-  if (!$a) { $i = 4 - $ind; $a = $w{"Ant $i"}; }
+  if (!$a) { my $i = 4 - $ind; $a = $w{"Ant $i"}; }
   if (!$a) { $a = $c{"Ant $ind"}; }
   my $name = $w{Name};
   $a = replaceNdot($a, $lang, $name);
@@ -1735,7 +1741,7 @@ sub getcommemoratio {
   if (!$a) { return ''; }
   postprocess_ant($a, $lang);
   my $v = $w{"Versum $ind"};
-  if (!$v) { $i = 4 - $ind; $v = $w{"Versum $i"}; }
+  if (!$v) { my $i = 4 - $ind; $v = $w{"Versum $i"}; }
   if (!$v) { $v = $c{"Versum $ind"}; }
   if (!$v) { $v = getfrompsalterium('Versum', $ind, $lang); }
   if (!$v) { $v = 'versus missing'; }
@@ -1870,7 +1876,7 @@ sub tryoldhymn {
   my $source = shift;
   my %source = %$source;
   my $name = shift;
-  $name1 = $name;
+  my $name1 = $name;
   $name1 =~ s/Hymnus\S*/$&M/;
 
   if ($version =~ /(Monastic|1570|Praedicatorum)/i && $name =~ /Hymnus/i && exists($source{$name1})) {
@@ -2066,7 +2072,7 @@ sub setbuild {
   my $file = shift;
   my $name = shift;
   my $comment = shift;
-  $source = $file;
+  my $source = $file;
   if ($source =~ /(.*?)\//s) { $source = $1; }
 
   if ($comment =~ /ord/i) {
@@ -2177,11 +2183,11 @@ sub getrefs {
     /isx
     )
   {
-    $before = $1;
-    $file = $2;
-    $item = $3;
-    $after = $5;
+    my $before = $1;
+    my $file = $2;
+    my $item = $3;
     my $substitutions = $4;
+    my $after = $5;
     $item =~ s/\s*$//;
 
     if ($file =~ /^feria$/i) {
@@ -2373,3 +2379,4 @@ sub replaceNdot {
   }
   return $s;
 }
+1;

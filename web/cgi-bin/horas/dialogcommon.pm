@@ -1,2 +1,2 @@
-BEGIN {require "dialogcommon.pl";}
+BEGIN {require "horas/dialogcommon.pl";}
 1;

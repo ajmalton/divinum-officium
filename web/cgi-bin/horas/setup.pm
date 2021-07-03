@@ -1,6 +1,2 @@
-package horas;
-use strict;
-use warnings 'all';
-
-require "setup.pl";
+BEGIN {require "horas/setup.pl";}
 1;

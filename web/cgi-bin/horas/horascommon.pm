@@ -1,2 +1,2 @@
-BEGIN {require "horascommon.pl";}
+BEGIN {require "horas/horascommon.pl";}
 1;

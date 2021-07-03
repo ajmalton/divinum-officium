@@ -3,7 +3,8 @@ use utf8;
 use strict;
 use warnings;
 use Carp;
-use DivinumOfficium::FileIO qw(do_read);
+#use DivinumOfficium::FileIO qw(do_read);
+use horas::do_io;
 
 BEGIN {
   require Exporter;
@@ -17,13 +18,13 @@ BEGIN {
 # $basedir.
 sub vernaculars {
   my $basedir = shift;
-  my @lines = do_read("$basedir/Linguae.txt") or croak q(Couldn't load language list.);
+  my @lines = horas::do_read("$basedir/Linguae.txt") or croak q(Couldn't load language list.);
   return @lines;
 }
 
 sub load_versions {
   my $basedir = shift;
-  my @versions = do_read("$basedir/Versions.txt") or croak "Couldn't load versions list from $basedir.";
+  my @versions = horas::do_read("$basedir/Versions.txt") or croak "Couldn't load versions list from $basedir.";
   return @versions;
 }
 

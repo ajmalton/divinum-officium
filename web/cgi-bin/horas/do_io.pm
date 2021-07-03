@@ -1,6 +1,2 @@
-package horas;
-use strict;
-use warnings 'all';
-
-require "do_io.pl";
+BEGIN {require "horas/do_io.pl";}
 1;

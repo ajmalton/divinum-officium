@@ -1,2 +1,2 @@
-require "webdia.pl";
+BEGIN {require "horas/webdia.pl";}
 1;

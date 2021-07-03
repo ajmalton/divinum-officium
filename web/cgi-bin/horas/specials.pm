@@ -1,6 +1,2 @@
-package horas;
-use strict;
-use warnings 'all';
-
-require "specials.pl";
+BEGIN {require "horas/specials.pl";}
 1;

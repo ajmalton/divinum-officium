@@ -1,6 +1,2 @@
-package horas;
-use strict;
-use warnings 'all';
-
-require "monastic.pl";
+BEGIN { require "horas/monastic.pl";}
 1;
