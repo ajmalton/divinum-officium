@@ -97,6 +97,7 @@ binmode(STDOUT, ':encoding(utf-8)');
 
 our $q = new CGI;
 
+our $background;
 our $htmlurl;
 our $datafolder;
 our $link;
@@ -351,7 +352,7 @@ PrintTag
     headline($head);
 
     #eval($setup{'parameters'});
-    my $background = ($whitebground) ? "BGCOLOR=\"white\"" : "BACKGROUND=\"$htmlurl/horasbg.jpg\"";
+    $background = ($whitebground) ? "BGCOLOR=\"white\"" : "BACKGROUND=\"$htmlurl/horasbg.jpg\"";
     horas($command);
     print << "PrintTag";
 <P ALIGN=CENTER>

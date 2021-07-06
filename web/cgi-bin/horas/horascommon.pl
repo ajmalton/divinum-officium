@@ -81,6 +81,7 @@ our $hymncontract;
 our $seasonalflag;
 our $transfervigil;
 
+my %kalendar;
 my %transfer;
 my $transfertemp;
 my %transfertemp;
@@ -277,7 +278,6 @@ sub getrank {
     : ($version =~ /1960/) ? 1960
     : ($version =~ /Praedicatorum/) ? 1960
     : 1960;
-  my %kalendar;
   my @a;
 
   $transfervigil = '';
@@ -309,7 +309,7 @@ sub getrank {
     %transfertemp = split(';;', $tr);
     $transfertemp = $transfertemp{$sday};
   } else {
-    %transfertemp = undef;
+    %transfertemp = ();
     $transfertemp = '';
   }
   if ($transfertemp && $transfertemp !~ /tempora/i) { $transfertemp = "$sanctiname/$transfertemp"; }
@@ -445,10 +445,14 @@ sub getrank {
     %tempora = {};
   }
   my $initia = ($tempora{Lectio1} =~ /!.*? 1\:1\-/) ? 1 : 0;
-  my $sn;
-
+  
   #handle sancti
-  $sn = "$sanctiname/$kalendar{$sday}";
+  my $sn;
+  if (defined($kalendar{$sday})) {
+    $sn = "$sanctiname/$kalendar{$sday}";
+  } else {
+    $sn = "$sanctiname/";
+  }
 
   if ($transfertemp && $transfertemp =~ /Sancti/) {
     $sn = $transfertemp;
@@ -457,6 +461,7 @@ sub getrank {
   } elsif (transfered($sn)) {
     $sn = '';
   }
+
   my $snd = $sn;
   if (!$snd || $snd !~ /([0-9]+\-[0-9]+)/) { $snd = $sday; }
   $snd = ($snd =~ /([0-9]+\-[0-9]+)/) ? $1 : '';
@@ -481,9 +486,15 @@ sub getrank {
   # of the day within the month or because of All Souls' day.
   $dirge = 2
     if (
-    $hora =~ /Laudes/i
-    && (($dirgeline && $version =~ /Trident/i && $snd && $dirgeline =~ /$snd/)
-      || $saint{Rule} =~ /Matutinum et Laudes Defunctorum/)
+      $hora =~ /Laudes/i
+      && (
+	($dirgeline
+	  && $version =~ /Trident/i
+	  && $snd
+	  && $dirgeline =~ /$snd/)
+	|| (defined($saint{Rule})
+	  && $saint{Rule} =~ /Matutinum et Laudes Defunctorum/)
+      )
     );
 
   if ($version =~ /(1955|1960|Newcal)/) {
@@ -492,19 +503,39 @@ sub getrank {
   }    #else {if ($srank =~ /Simplex/i) {$srank = '';}}
   @srank = split(";;", $srank);
 
-  if ($srank[2] < 2 && $hora =~ /(vespera|completorium)/i && $trank && !($month == 1 && $day > 6 && $day < 13)) {
+  if ($hora =~ /(vespera|completorium)/i
+    && @srank && $srank[2] < 2
+    && $trank && !($month == 1 && $day > 6 && $day < 13)) {
     $srank = '';
-    @srank = undef;
+    @srank = ();
   }
-  if ($trank[2] == 7 && $srank[2] < 6) { $srank = ''; @srank = undef; }
-  if ($version =~ /(1955|1960|Monastic)/i && $trank[2] >= 6 && $srank[2] < 6) { $srank = ''; @srank = undef; }
 
-  if ($version =~ /1955/ && $srank[2] == 2 && $srank[1] =~ /Semiduplex/i) {
+  if (@trank && $trank[2] == 7
+    && @srank && $srank[2] < 6
+  ) {
+    $srank = '';
+    @srank = ();
+  }
+
+  if ($version =~ /(1955|1960|Monastic)/i
+    && @trank && $trank[2] >= 6
+    && @srank && $srank[2] < 6
+  ) {
+    $srank = '';
+    @srank = ();
+  }
+
+  #1955: semiduplex reduced to simplex
+  if ($version =~ /1955/
+    && @srank
+    && $srank[2] == 2
+    && $srank[1] =~ /Semiduplex/i
+  ) {
     $srank[2] = 1.5;
-  }    #1955: semiduplex reduced to simplex
+  }
 
   if ( $version =~ /1960|Monastic/i
-    && $srank[2] < 2
+    && @srank && $srank[2] < 2
     && $srank[1] =~ /Simplex/i
     && $testmode =~ /seasonal/i
     && ($month > 1 || $day > 13))
@@ -533,7 +564,10 @@ sub getrank {
 
     # Recite Vespers of the dead after Vespers of the day, either because of
     # the day within the month or because of All Souls' day.
-    $dirge = 1 if (($dirgeline && $cdayd && $dirgeline =~ /$cdayd/) || $saint{Rule} =~ /Vesperae Defunctorum/);
+    $dirge = 1 if (
+      ($dirgeline && $cdayd && $dirgeline =~ /$cdayd/)
+      || ($saint{Rule} && $saint{Rule} =~ /Vesperae Defunctorum/)
+    );
     if ($cday && $cday !~ /tempora/i) { $cday = "$sanctiname/$cday"; }
     if ($testmode =~ /^Season$/i) { $cday = 'none'; }
 
@@ -599,7 +633,7 @@ sub getrank {
     our $antecapitulum2 = '';
     our $anterule = '';
 
-    if ($crank[2] >= $srank[2]) {
+    if (@crank && @srank && $crank[2] >= $srank[2]) {
       if ($hora =~ /Vespera/i && $srank[2] == $crank[2] && $crank[2] >= 2) {
         $antecapitulum =
             (exists($saint{'Ant Vespera 3'})) ? $saint{'Ant Vespera 3'}
@@ -674,8 +708,15 @@ sub getrank {
 #  $comrank = 0;
   if ($version =~ /Trid/i && $trank[2] < 5.1 && $trank[0] =~ /Dominica/i) { $trank[2] = 2.9; }
 
-  if ($version =~ /1960/ && $dayofweek == 0) {
-    if (($trank[2] >= 6 && $srank[2] < 6) || ($trank[2] >= 5 && $srank[2] < 5)) { $srank = ''; @srank = undef; }
+  if (($version =~ /1960/ && $dayofweek == 0)
+    && @srank && @trank
+    && (
+      ($trank[2] >= 6 && $srank[2] < 6)
+      || ($trank[2] >= 5 && $srank[2] < 5)
+    )
+  ) {
+      $srank = '';
+      @srank = ();
   }
 
   #if ($svesp == 3 && $srank[2] >= 5 && $dayofweek == 6) {$srank[2] += 5;}  ?????????
@@ -686,15 +727,25 @@ sub getrank {
     && $dayname[0] !~ /Quadp3/i
     && $testmode !~ /^season$/i)
   {
-    if ($dayofweek == 6 && $srank !~ /(Vigil|in Octav)/i && $trank[2] < 2 && $srank[2] < 2 && !$transfervigil) {
-      $tempora{Rank} = $trank = "Sanctae Mariae Sabbato;;Feria;;2;;vide $C10";
+    if (@srank && @trank
+      && $dayofweek == 6
+      && $srank !~ /(Vigil|in Octav)/i
+      && $trank[2] < 2
+      && $srank[2] < 2
+      && !$transfervigil
+    ) {
+      $trank = "Sanctae Mariae Sabbato;;Feria;;2;;vide $C10";
+      $tempora{Rank} = $trank;
       $scriptura = $tname;
-      if ($scriptura =~ /^\.txt/i) { $scriptura = $sname; }
+      if ($scriptura =~ /^\.txt/i) {
+	$scriptura = $sname;
+      }
       $tname = "$communename/$C10.txt";
       @trank = split(";;", $trank);
     }
 
     if ( $hora =~ /(Vespera|Completorium)/i
+      && $crank && $srank && $trank
       && $dayofweek == 5
       && $crank !~ /;;[2-7]/
       && $srank !~ /;;[5-7]/
@@ -709,8 +760,21 @@ sub getrank {
       @trank = split(";;", $trank);
     }
   }
-  if ($trank[2] == 2 && $trank[0] =~ /infra octav/i) { $srank[2] += .1; }
-  if ($testmode =~ /seasonal/i && $version =~ /1960|Newcal/ && $srank[2] < 5 && $dayname[0] =~ /Adv/i) { $srank[2] = 1; }
+  if (@trank
+    && $trank[2] == 2
+    && $trank[0] =~ /infra octav/i
+  ) {
+    $srank[2] += .1;
+  }
+
+  if ($testmode =~ /seasonal/i
+    && @srank
+    && $version =~ /1960|Newcal/
+    && $srank[2] < 5
+    && $dayname[0] =~ /Adv/i
+  ) {
+    $srank[2] = 1;
+  }
 
   # Flag to indicate whether office is sanctoral or temporal. Assume the
   # latter unless we find otherwise.
@@ -858,6 +922,7 @@ sub getrank {
   } else {    #winner is de tempora
     if (
          $version !~ /Monastic/i
+      && @srank && @trank
       && $dayname[0] !~ /(Adv|Quad[0-6])/i
       && $srank[2] < 2
       && $trank[2] < 2
@@ -879,7 +944,10 @@ sub getrank {
       @trank = split(";;", $trank);
     }
 
-    if ($hora !~ /Vespera/i && $rank < 1.5 && $transfervigil) {
+    if ($hora !~ /Vespera/i
+      && (!defined($rank) || $rank < 1.5)
+      && $transfervigil
+    ) {
       my $t = "Sancti/$transfervigil.txt";
       my %w = setupstring($datafolder, 'Latin', $t);
 
@@ -889,12 +957,15 @@ sub getrank {
         @trank = split(';;', $trank);
       }
     }
+
     $rank = $trank[2];
     $dayname[1] = "$trank[0]  $trank[1]";
     $winner = $tname;
     $vespera = $tvesp;
 
-    if ($trank[3] =~ /(ex|vide)\s*(.*)\s*$/i) {
+    if (@trank > 3
+      && $trank[3] =~ /(ex|vide)\s*(.*)\s*$/i
+    ) {
       $communetype = $1;
       my $name = $2;
       if ($name =~ /^C[0-9]/i) { $name = "$communename/$name"; }
@@ -2100,9 +2171,17 @@ sub papal_antiphon_dum_esset($) {
 #*** build_comment_line()
 #  Sets $comment to the HTML for the comment line.
 sub build_comment_line() {
-  my $commentcolor =
-    ($dayname[2] =~ /(Feria)/i) ? 'black' : ($marian_commem && $dayname[2] =~ /^Commem/) ? 'blue' : 'maroon';
-  $comment = ($dayname[2]) ? "<SPAN STYLE=\"font-size:82%; color:$commentcolor;\"><I>$dayname[2]</I></SPAN>" : "";
+  my $dn = (@dayname > 2 ? $dayname[2] : '');
+  my $commentcolor = (
+    $dn =~ /(Feria)/i ? 'black'
+    : ($marian_commem && $dn =~ /^Commem/) ? 'blue'
+    : 'maroon'
+  );
+  if ($dn) {
+    $comment = "<SPAN STYLE=\"font-size:82%; color:$commentcolor;\"><I>$dn</I></SPAN>"
+  } else {
+    $comment = "";
+  }
 }
 
 #*** cache_prayers()

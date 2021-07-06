@@ -108,7 +108,7 @@ sub horas {
   
   $expandind = 0;
   if (!$Tk && !$Hk) {
-    $expandnum = strictparam('expandnum');
+    $expandnum = strictparam('expandnum', 'numeric');
   }
   table_start();
   my $ind1 = 0;
@@ -223,7 +223,7 @@ sub resolve_refs {
   if ($t[0] =~ $omit_regexp) {
     $t[0] =~ s/^\s*\#/\!\!\!/;
   } else {
-    $t[0] =~ s/^\s*(\#.*)(\{.*\})?\s*$/'!!' . substr(translate($1, $lang), 1) . $2/e;
+    $t[0] =~ s/^\s*(\#.*)((\{.*\})?)\s*$/'!!' . substr(translate($1, $lang), 1) . $2/e;
   }
   my @resolved_lines;    # Array of blocks expanded from lines.
   my $prelude = '';      # Preceding continued lines.
@@ -491,6 +491,8 @@ sub antiphona_finalis : ScriptFunc {
 # selects the text, attaches the head,
 # sets red color for the introductory comments
 # returns the visible form
+# $num is psalm reference, either NN or NN(VV-VV)
+#    (but for $num>150 refers to a canticle)
 sub psalm : ScriptFunc {
   my @a = @_;
   my ($num, $lang, $antline);
@@ -504,6 +506,7 @@ sub psalm : ScriptFunc {
     $lang = $a[3];
     $antline = $a[4];
   }
+  my $psalmnumber = $a[0];
 
   #if ($ck) {
   if ($Ck) {
@@ -565,7 +568,9 @@ sub psalm : ScriptFunc {
   }
   my $t = '';
 
-  if ($num > 150 && $num < 300 && @lines) {
+  if (@lines
+    && 150 < $psalmnumber && $psalmnumber < 300
+  ) {
     my $line = $lines[0];
 
     if ($line =~ /\s*[(]?(.*?)\s+[*]/i) {
@@ -605,9 +610,15 @@ sub psalm : ScriptFunc {
         $v = $2;
       } elsif ($line =~ /^\s*([0-9]+)/) {
         $v = $1;
+      } else {
+        $v = 0;
       }
-      if ($v < $v1 && $v > 0) { next; }
-      if ($v > $v2) { last; }
+
+      $v = 0 unless $v;
+
+      next if 0 < $v && $v < $v1;
+      last if $v2 < $v;
+
       my $lnum = '';
 
       if ($line =~ /^([0-9]*[\:]*[0-9]+)(.*)/) {
@@ -650,8 +661,15 @@ sub psalm : ScriptFunc {
       $t .= "\n$lnum $line $rest";
     }
     $t .= "\n";
-    if ($version eq "Monastic" && $num == 129 && $hora eq 'Prima') { $t .= $prayers{$lang}->{Requiem}; }
-    elsif ($num != 210 && !$nogloria) { $t .= "\&Gloria\n"; }
+    if ($version eq "Monastic"
+      && $psalmnumber == 129
+      && $hora eq 'Prima'
+    ) {
+      $t .= $prayers{$lang}->{Requiem};
+    } elsif ($psalmnumber != 210 && !$nogloria) {
+      # NB 210 is Benedicite
+      $t .= "\&Gloria\n";
+    }
     $t .= settone(0);
     return $t;
   } else {

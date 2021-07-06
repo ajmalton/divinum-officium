@@ -69,7 +69,7 @@ our %winner;
 our %winner2;
 our $year;
 
-my @s;
+our @s; # shared with specmatins
 my %cc = ();
 my $ccind = 0;
 my $octavcount = 0;
@@ -94,8 +94,9 @@ sub specials {
     my $r = $w{Rule};
     $r =~ s/\s*$//;
     $r =~ s/\n/ /sg;
+    my $dn2 = defined($dayname[2]) ? $dayname[2] : '';
     $buildscript =
-      setfont($largefont, "$hora $date1") . "\n" . setfont($smallblack, "$dayname[1] ~ $dayname[2] : $r") . "\n";
+      setfont($largefont, "$hora $date1") . "\n" . setfont($smallblack, "$dayname[1] ~ $dn2 : $r") . "\n";
   }
   my $i = ($hora =~ /laudes/i) ? ' 2' : ($hora =~ /vespera/i) ? " $vespera" : '';
   if (exists($w{"Special $hora$i"})) { return loadspecial($w{"Special $hora$i"}); }
@@ -509,7 +510,11 @@ sub specials {
     if ($item =~ /Nunc Dimittis/i) {
       my $w = $w{"Ant 4$vespera"};
       my $c;
-      if (!$w && $communetype =~ /ex/) { ($w, $c) = getproprium("Ant 4$vespera", $lang, 1); }
+      if (!$w
+	&& $communetype && $communetype =~ /ex/
+      ) {
+	($w, $c) = getproprium("Ant 4$vespera", $lang, 1);
+      }
       if ($w) { setbuild1($ite, 'special'); }
       $tind--;
       my $non_first_ant = 0;
@@ -614,8 +619,8 @@ sub specials {
       && $hora =~ /Laudes/i
       && ($month == 4 || $version !~ /1960/)
       && ( $rule =~ /Laudes Litania/i
-        || $commemoratio{Rule} =~ /Laudes Litania/i
-        || $scriptura{Rule} =~ /Laudes Litania/i
+        || (%commemoratio && $commemoratio{Rule} =~ /Laudes Litania/i)
+        || (%scriptura && $scriptura{Rule} =~ /Laudes Litania/i)
         || $flag)
       )
     {
@@ -659,7 +664,7 @@ sub specials {
 # comment[ind] is translated
 sub setcomment {
 
-  my $label = shift;
+  my $label = shift || '';
   my $comment = shift;
   my $ind = shift;
   my $lang = shift;
@@ -685,9 +690,11 @@ sub setcomment {
 sub translate_label {
   my $item = shift;
   my $lang = shift;
-  $item =~ s/\s*$//;
-  if (exists($translate{$lang}{$item})) { $item = $translate{$lang}{$item}; }
-  $item =~ s/\n//g;
+  if ($item) {
+    $item =~ s/\s*$//;
+    if (exists($translate{$lang}{$item})) { $item = $translate{$lang}{$item}; }
+    $item =~ s/\n//g;
+  }
   return $item;
 }
 
@@ -980,7 +987,6 @@ sub psalmi_major {
   if ($hora =~ /Laudes/) { $name .= $laudes; }
   my @psalmi = ();
   my $prefix;
-  my $label;
 
   if ($version =~ /monastic/i) {
     my $head = "Daym$dayofweek";
@@ -1046,7 +1052,11 @@ sub psalmi_major {
       $w = $w{"Ant Vespera 3"};
       $c = ($winner =~ /tempora/i) ? 2 : 3;
     } elsif (!exists($w{'Ant Vespera'})
-      && ($communetype =~ /ex/ || ($version =~ /Trident/i && $winner =~ /Sancti/i)))
+      && ($communetype && $communetype =~ /ex/
+	|| ($version =~ /Trident/i
+	  && $winner =~ /Sancti/i)
+      )
+    )
     {
       ($w, $c) = getproprium("Ant Vespera 3", $lang, 1, 1);
       setbuild2("Antiphona $commune");
@@ -1058,7 +1068,7 @@ sub psalmi_major {
 
   if ($w) {
     setbuild2("Antiphonas $winner");
-  } elsif ($communetype =~ /ex/
+  } elsif ($communetype && $communetype =~ /ex/
     || ($version =~ /Trident/i && $hora =~ /Laudes/i && $winner =~ /Sancti/i))
   {
     ($w, $c) = getproprium("Ant $hora", $lang, 1, 1);
@@ -1080,10 +1090,10 @@ sub psalmi_major {
   } elsif (
     (
          $rule =~ /Psalmi Dominica/i
-      || $commune{Rule} =~ /Psalmi Dominica/i
+      || (%commune && $commune{Rule} =~ /Psalmi Dominica/i)
       || ($anterule && $anterule =~ /Psalmi Dominica/i)
     )
-    && ($antiphones[0] !~ /\;\;\s*[0-9]+/)
+    && (@antiphones && $antiphones[0] !~ /\;\;\s*[0-9]+/)
     )
   {
     $prefix = translate("Psalmi, antiphonae", $lang) . ' ';
@@ -1862,9 +1872,11 @@ sub getproprium {
 
     if ($w) {
       $w = replaceNdot($w, $lang);
-      my $n = $com{Name};
-      $n =~ s/\n//g;
-      if ($buildflag) { setbuild($n, $name, 'subst'); }
+      if (defined($com{Name})) {
+	my $n = $com{Name};
+	$n =~ s/\n//g;
+	setbuild($n, $name, 'subst') if $buildflag;
+      }
     }
   }
   return ($w, $c);
@@ -2051,7 +2063,7 @@ sub getfromcommune {
 sub setbuild1 {
   if ($column != 1) { return; }    #to avoid duplication
   my $label = shift;
-  my $comment = shift;
+  my $comment = shift || '';
   $label =~ s/[\#\n]//g;
   $label = "$label";
   $buildscript .= setfont($redfont, $label) . " $comment\n";
@@ -2096,12 +2108,15 @@ sub doxology {
       setbuild2("Special doxology");
     } elsif ($rule =~ /Doxology=([a-z]+)/i) {
       $dname = $1;
-    } elsif (($version =~ /Trident/i || $winner{Rank} !~ /Adventus/)
+    } elsif (
+      ($version =~ /Trident/i
+	|| %winner && $winner{Rank} !~ /Adventus/)
+      && %commemoratio
       && $commemoratio{Rule} =~ /Doxology=([a-z]+)/i)
     {
       $dname = $1;
     } elsif (($month == 8 && $day > 15 && $day < 23 && $version !~ /Monastic/i)
-      || ($version != /1570/ && $month == 12 && $day > 8 && $day < 16 && $dayofweek > 0))
+      || ($version !~ /1570/ && $month == 12 && $day > 8 && $day < 16 && $dayofweek > 0))
     {
       $dname = 'Nat';
     } else {
@@ -2147,7 +2162,11 @@ sub checksuffragium {
   if ($winner{Rank} =~ /octav/i && $winner{Rank} !~ /post Octavam/i) {
     return 0;
   }                                                                       # && $winner{Rank} !~ /Feria/i) {return 0;}
-  if ($commemoratio{Rank} =~ /octav/i) { return 0; }
+  if (%commemoratio
+    && $commemoratio{Rank} =~ /octav/i
+  ) {
+    return 0;
+  }
   if ($octavcount) { return 0; }
   if ($winner =~ /C12/) { return 1; }
   if ($duplex > 2 && $version !~ /trident/i && $seasonalflag) { return 0; }
@@ -2171,7 +2190,7 @@ sub getrefs {
   my $file = '';
   my $item = '';
   my $flag = 0;
-  my %s = {};
+  my %s = ();
 
   while (
     $w =~ /

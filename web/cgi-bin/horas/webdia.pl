@@ -1,6 +1,7 @@
 package horas;
 use utf8;
 use v5.14;
+
 use warnings 'all';
 use strict;
 
@@ -10,37 +11,46 @@ use strict;
 
 our $q;  # CGI
 
-our $error;
-our $htmlurl;
-our $datafolder;
-our $dialogfont;
-our %setup;
-
-our $Ck;
-our $notes;
+our $accented;
 our $background;
-our $imgurl;
-our $officium;
-our $lang1;
-our $hora;
-our $date1;
-our $version;
-our $caller;
-our $lang2;
-our $votive;
-our $testmode;
-our $expand;
-our $column;
-our $textwidth;
-our $border;
 our $blackfont;
-
+our $border;
+our $building;
+our $caller;
+our $Ck;
+our $column;
 our $cookieexpire;
 our %cookies;
+our $date1;
+our $datafolder;
+our $dialogfont;
+our $error;
+our $expand;
+our $hora;
+our $htmlurl;
+our $imgurl;
+our $initiale;
+our $lang1;
+our $lang2;
+our $largefont;
+our $notes;
+our $officium;
 our $only;
+our $priest;
+our $psalmvar;
+our $redfont;
+our $screenheight;
 our $searchind;
-
+our %setup;
+our $smallblack;
+our $smallfont;
+our $testmode;
+our $textwidth;
 our $text1; #TODO fix this ref
+our $titlefont;
+our $version;
+our $votive;
+our $whitebground;
 
 
 my $a = 4;
@@ -337,8 +347,13 @@ sub beep {
 # get the parameter value for name, empty string if undef
 sub strictparam {
   my $pstr = shift;
+  my $numeric = shift;
   my $v = cleanse($q->param($pstr));
   $v = '' unless defined $v;
+  if ($numeric && $numeric eq 'numeric') {
+    no warnings 'numeric';
+    $v = $v + 0;
+  }
   return $v;
 }
 
@@ -418,8 +433,10 @@ sub getcookies {
     $param = '';
 
     for ($i = 0; $i < @sti; $i++) {
-      my @a = split('=', $param[$i]);
-      if ($a[0]) { $param .= "$a[0]=$sti[$i];;"; }
+      if ($param[$i]) {
+	my @a = split('=', $param[$i]);
+	if ($a[0]) { $param .= "$a[0]=$sti[$i];;"; }
+      }
     }
     eval($param);
     $setup{$name} = $param;
