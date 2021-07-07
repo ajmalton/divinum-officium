@@ -11,13 +11,27 @@ use strict;
 use horas::horascommon;
 use horas::do_io;
 
-our %dialog;
-our %setup;
+our $blackfont; 
+our $building; 
+our @dayname;
 our $dayofweek;
-our $version;
+our %dialog;
+our $initiale; 
+our $lang1; 
+our $largefont; 
 our $missa;
 our $missanumber;
-our @dayname;
+our $priest;
+our $psalmvar; 
+our $redfont; 
+our $screenheight; 
+our %setup;
+our $smallblack; 
+our $smallfont; 
+our $textwidth;
+our $titlefont; 
+our $whitebground; 
+our $version;
 
 #*** getini(file)
 # loads and interprets .ini file
@@ -607,6 +621,7 @@ sub setuppar {
     $a[1] = eval($a[1]);
 
     foreach $s (@a) {
+      $s = '' unless defined($s);
       if (!$s && $s ne '0') { $s = ''; }
       $par .= "$s~>";
     }

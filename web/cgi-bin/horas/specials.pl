@@ -2319,7 +2319,7 @@ sub get_prima_responsory {
   if ($dayname[0] =~ /Pasc/i) { $key = 'Pasch'; }
 
   if ( $rule =~ /Doxology=(Nat|Epi|Pasch|Asc|Corp|Heart)/i
-    || $scriptura{Rule} =~ /Doxology=(Nat|Epi|Pasch|Asc)/i
+    || (%scriptura && $scriptura{Rule} =~ /Doxology=(Nat|Epi|Pasch|Asc)/i)
     || ($version !~ /(1960|Newcal)/ && $scriptura{Rule} =~ /Doxology=(Nat|Epi|Pasch|Asc|Corp|Heart)/i)
     || ($version !~ /(1960|Newcal)/ && $commemoratio{Rule} =~ /Doxology=(Nat|Epi|Pasch|Asc|Corp|Heart)/i))
   {

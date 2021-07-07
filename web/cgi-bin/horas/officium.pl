@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -Icgi-bin/
 use utf8;
 
 # Name : Laszlo Kiss

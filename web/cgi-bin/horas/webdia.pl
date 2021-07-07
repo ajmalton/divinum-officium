@@ -30,6 +30,7 @@ our $hora;
 our $htmlurl;
 our $imgurl;
 our $initiale;
+our $input;
 our $lang1;
 our $lang2;
 our $largefont;
@@ -52,9 +53,6 @@ our $version;
 our $votive;
 our $whitebground;
 
-
-my $a = 4;
-my $input;
 
 my $check;
 my @ctext1;
@@ -145,7 +143,7 @@ sub setup {
     $parmode[$i] = $elems[2];
     $parpar[$i] = $elems[3];
     $parfunc[$i] = $elems[4];
-    $parhelp[$i] = $elems[5];
+    $parhelp[$i] = $elems[5] || '';;
   }
   my ($width, $rpar, @rpar, $size, @size, $range, @range, $j);
   my $tl = 0;
@@ -307,6 +305,8 @@ sub cleanse($) {
       }
       $str = join(';', @parts);
     }
+  } else {
+    $str = '';
   }
   return $str;
 }
@@ -327,7 +327,7 @@ sub getsetupvalue {
     $script[$i] =~ s/\=/\~\>/;
     my @elems = split('~>', $script[$i]);
     my $value = cleanse($q->param("I$i"));
-    if (!$value && $value ne '0') { $value = ''; }
+    $value = '' unless $value;
     if ($value =~ /^on$/) { $value = 1; }
     $value =~ s/\n/  /g;
     if ($elems[0] =~ /check/i) { $value = $check; }
@@ -344,12 +344,12 @@ sub beep {
 }
 
 #*** strictparam(name)
-# get the parameter value for name, empty string if undef
+# get the parameter value for name
+# empty string if undef
 sub strictparam {
   my $pstr = shift;
   my $numeric = shift;
   my $v = cleanse($q->param($pstr));
-  $v = '' unless defined $v;
   if ($numeric && $numeric eq 'numeric') {
     no warnings 'numeric';
     $v = $v + 0;
