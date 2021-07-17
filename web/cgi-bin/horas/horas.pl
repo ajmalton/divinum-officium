@@ -93,7 +93,8 @@ sub horas {
   $column = 1;
   if ($Ck) {
     $version = $version1;
-    setmdir($version); precedence();
+    setmdir($version);
+    precedence();
   }
 
   my @script1;
@@ -204,7 +205,7 @@ sub resolve_refs {
 
   #handles expanding for skeleton
   my $expandflag;
-  if ($t[0] =~ /#/) {
+  if (($t[0]//"") =~ /#/) {
     if ($expandind == $expandnum) {
       $expandflag = 1;
     } else {
@@ -220,10 +221,12 @@ sub resolve_refs {
     }
   }
 
-  if ($t[0] =~ $omit_regexp) {
-    $t[0] =~ s/^\s*\#/\!\!\!/;
-  } else {
-    $t[0] =~ s/^\s*(\#.*)((\{.*\})?)\s*$/'!!' . substr(translate($1, $lang), 1) . $2/e;
+  if ($t[0]) {
+    if ($t[0] =~ $omit_regexp) {
+      $t[0] =~ s/^\s*\#/\!\!\!/;
+    } else {
+      $t[0] =~ s/^\s*(\#.*)((\{.*\})?)\s*$/'!!' . substr(translate($1, $lang), 1) . $2/e;
+    }
   }
   my @resolved_lines;    # Array of blocks expanded from lines.
   my $prelude = '';      # Preceding continued lines.
@@ -827,7 +830,9 @@ sub settone {
 sub adjust_refs {
   my ($name, $lang) = @_;
 
-  if ($name =~ /\&Gloria/ && $rule =~ /Requiem gloria/i) {
+  if ($name =~ /\&Gloria/
+    && ($rule//"") =~ /Requiem gloria/i
+  ) {
     return '$Requiem';
   }
 

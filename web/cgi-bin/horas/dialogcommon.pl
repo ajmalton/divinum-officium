@@ -451,7 +451,7 @@ sub process_conditional_lines {
 
     # Check for a new condition.
     if ($line =~ /^\s*$conditional_regex\s*(.*)$/o) {
-      my ($strength, $result, $backscope, $forwardscope) = parse_conditional($1, $2, $3);
+      my ($strength, $result, $backscope, $forwardscope) = parse_conditional($1//"", $2, $3);
 
       # Sequel.
       $line = $4;
@@ -498,6 +498,7 @@ sub process_conditional_lines {
         # satisfied conditional with nesting forward scope.
         if ($forwardscope == SCOPE_NULL) {
 	  $forwardscope = SCOPE_NEST;
+          $result = 1;
         }
 
         if ($result) {
@@ -551,16 +552,14 @@ sub do_inclusion_substitutions(\$$) {
   my ($text, $substitutions) = @_;
 
   # substitute text or select line(s) (numbered from 1!)
-  if($substitutions) {
-    while (($substitutions =~ m{(?:s/([^/]*)/([^/]*)/([gism]*))|(?:(\d+)(-\d+)?)}g)) {
-      if ($4) {
-	my ($s) = $4 - 1;
-	my ($l) = $5 ? -$5 - $s : 1;
-	my (@t) = split(/\n/, $$text);
-	$$text = join("\n", splice(@t, $s, $l)) . "\n";
-      } else {
-	eval "\$\$text =~ s/$1/$2/$3";
-      }
+  while (($substitutions//"") =~ m{(?:s/([^/]*)/([^/]*)/([gism]*))|(?:(\d+)(-\d+)?)}g) {
+    if ($4) {
+      my ($s) = $4 - 1;
+      my ($l) = $5 ? -$5 - $s : 1;
+      my (@t) = split(/\n/, $$text);
+      $$text = join("\n", splice(@t, $s, $l)) . "\n";
+    } else {
+      eval "\$\$text =~ s/$1/$2/$3";
     }
   }
 }
@@ -578,7 +577,10 @@ sub get_loadtime_inclusion(\%$$$$$$$) {
   our $version;
 
   # Adjust offices of martyrs in Paschaltide to use the special common.
-  if ($dayname[0] =~ /Pasc/i && !$missa && $callerfname !~ /C[23]/) {
+  if (($dayname[0]//"") =~ /Pasc/i
+    && !$missa
+    && $callerfname !~ /C[23]/
+  ) {
     $ftitle =~ s/(C[23])(?!p)/$1p/g;
   }
 

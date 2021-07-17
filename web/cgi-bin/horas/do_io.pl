@@ -1,6 +1,8 @@
 package horas;
 # do_io
 use utf8;
+use strict;
+use warnings 'all';
 
 # Text-based IO for Divinum Officium Project.
 #

@@ -1,17 +1,22 @@
-#!/usr/bin/perl
 use utf8;
+use strict;
+use warnings 'all';
 
 # Name : Laszlo Kiss
 # Date : 01-20-08
 # Divine Office Setup
-$a = 1;
+
+our %setup;
+our $command;
+our $input;
+our $title;
 
 #*** setup($command)
 # prints and handles $command item from horas.dialog hash (in www/horas folder)
 # using horas.setup hash also from www/horas folder
 sub setuptable {
-  $command = shift;
-  $title1 = $title;
+  $command = shift;     # oh, dear, oh, dear
+  my $title1 = $title;
   $title1 =~ s/Setup/Options/i;
 
   #*** set input table
@@ -28,3 +33,4 @@ $input
 PrintTag
   $command = "change" . $command;
 }
+1;

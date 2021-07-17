@@ -231,7 +231,10 @@ sub psalmi_matutinum {
   }
 
   #replace Psalm50 with breaking 49 to three parts
-  if ($laudes == 2 && $dayofweek == 3 && $version !~ /trident/i) {
+  if (($laudes||0) == 2
+    && $dayofweek == 3
+    && $version !~ /trident/i
+  ) {
     @psalmi = split("\n", $psalmi{"Day31"});
     setbuild2("Psalm #50 replaced by breaking #49");
   }
@@ -626,8 +629,14 @@ sub lectiones {
     $i = ($num > 0) ? $num : 3;
     @a = split("\n", $benedictio{"Nocturn $i"});
   }
-  my $divaux = ($rule =~ /Divinum auxilim/i || $commune{Rule} =~ /Divinum auxilium/i) ? 1 : 0;
-  if ($i == 3 && $winner{Rank} =~ /Mari.* Virgin/i && !$divaux) { $a[3] = $a[10]; }
+  my $divaux = ($rule =~ /Divinum auxilim/i
+    || ($commune{Rule}//"") =~ /Divinum auxilium/i);
+  if ($i == 3
+    && ($winner{Rank}//"") =~ /Mari.* Virgin/i
+    && !$divaux
+  ) {
+    $a[3] = $a[10];
+  }
 
   #benedictiones for nocturn III
   if ($i == 3 && $rule !~ /ex C1[02]/ && $rule !~ /Special Evangelii Benedictio/i) {
@@ -825,8 +834,10 @@ sub lectio : ScriptFunc {
   if (
     !$w
     && (
-      ($communetype =~ /^ex/i && $commune !~ /Sancti/i && $rank > 3)
-      || ( $num < 4
+      (($communetype//"") =~ /^ex/i
+	&& $commune !~ /Sancti/i
+	&& $rank > 3)
+      || ($num < 4
         && $homilyflag
         && exists($commune{"Lectio$num"}))
     )
@@ -880,7 +891,7 @@ sub lectio : ScriptFunc {
     }
   }
 
-  if ($commune{Rule} =~ /Special Lectio $num/) {
+  if (($commune{Rule}//"") =~ /Special Lectio $num/) {
     my %mariae = %{setupstring($datafolder, $lang, "$communename/C10.txt")};
     my $name = getC10readingname();
     $w = $mariae{$name};
@@ -904,7 +915,7 @@ sub lectio : ScriptFunc {
   #look for commemoratio 9
   #if ($rule =~ /9 lectio/i && $rank < 2) {$rule =~ s/9 lectio//i;}
   if ( $version !~ /1960|Monastic/i
-    && $commune !~ /C10/
+    && ($commune//"") !~ /C10/
     && $rule !~ /no93/i
     && $winner{Rank} !~ /Octav.*(Epi|Corp)/i
     && ($dayofweek != 0 || $winner =~ /Sancti/i || $winner =~ /Nat2/i)
@@ -1290,7 +1301,7 @@ sub gettype1960 {
 # return the modified lectio text
 #
 sub responsory_gloria {
-  my $w = shift;
+  my $w = shift//"";
   my $num = shift;
   $w =~ s/\&Gloria1?/\&Gloria1/g;
   my $prev = $w;
@@ -1611,7 +1622,7 @@ sub StJamesRule {
   my $num = shift;
   my $s = shift;
   my %w = %$w;
-  my %w1 = undef;
+  my %w1 = {};
   my $key;
 
   if ($w{Rank} =~ /Dominica/i && prevdayl1($s)) {

@@ -69,11 +69,13 @@ our %winner;
 our %winner2;
 our $year;
 
+# shared with specmatins
+our $label;
 our @s; # shared with specmatins
+
 my %cc = ();
 my $ccind = 0;
 my $octavcount = 0;
-my $label;
 my $popeclass;
 
 
@@ -1090,10 +1092,10 @@ sub psalmi_major {
   } elsif (
     (
          $rule =~ /Psalmi Dominica/i
-      || (%commune && $commune{Rule} =~ /Psalmi Dominica/i)
-      || ($anterule && $anterule =~ /Psalmi Dominica/i)
+      || (($commune{Rule}//"") =~ /Psalmi Dominica/i)
+      || (($anterule//"") =~ /Psalmi Dominica/i)
     )
-    && (@antiphones && $antiphones[0] !~ /\;\;\s*[0-9]+/)
+    && (($antiphones[0]//"") !~ /\;\;\s*[0-9]+/)
     )
   {
     $prefix = translate("Psalmi, antiphonae", $lang) . ' ';
@@ -1654,7 +1656,7 @@ sub getcommemoratio {
   my $ind = shift;
   my $lang = shift;
   my %w = %{officestring($datafolder, $lang, $wday, ($ind == 1) ? 1 : 0)};
-  my %c = undef;
+  my %c;
 
   if ($version =~ /Trident|Divino/i && $wday =~ /12-30/) { return ''; }
 
@@ -1685,7 +1687,7 @@ sub getcommemoratio {
 
   #my $lim = ($commemoratio =~ /tempora/i) ? 2 : 1;
   #if ($ind == 3 && $rank[2] < $lim) {return '';}
-  if ($rank[3] =~ /(ex|vide)\s+(.*)\s*$/i) {
+  if (($rank[3]//"") =~ /(ex|vide)\s+(.*)\s*$/i) {
     my $file = $2;
     if ($w{Rule} =~ /Comex=(.*?);/i && $rank < 5) { $file = $1; }
     if ($file =~ /^C[0-9]+$/ && $dayname[0] =~ /Pasc/i) { $file .= 'p'; }
@@ -1693,11 +1695,10 @@ sub getcommemoratio {
     if ($file =~ /^C/) { $file = "Commune/$file"; }
     %c = %{setupstring($datafolder, $lang, $file)};
   } else {
-    #%$c = {};   # surely not
-    %c = {};
+    %c = ();
   }
   if (!$rank) { $rank[0] = $w{Name}; }    #commemoratio from commune
-  my $o = $w{Oratio};
+  my $o = $w{Oratio}//"";
   if ($o =~ /N\./) {
     $o = replaceNdot($o, $lang);
   }
@@ -1719,7 +1720,7 @@ sub getcommemoratio {
 
   # Special processing for Common of Supreme Pontiffs.
   my $popeclass = '';
-  my %cp = {};
+  my %cp = ();
 
   if ($version !~ /Trident/i && ((my $plural, $popeclass, my $name) = papal_rule($w{Rule}))) {
     $o = papal_prayer($lang, $plural, $popeclass, $name);
@@ -1848,7 +1849,10 @@ sub getproprium {
     return ($w, $c);
   }
 
-  if (!$w && $communetype && ($communetype =~ /ex/i || $flag)) {
+  if (!$w
+    && $communetype
+    && ($communetype =~ /ex/i || $flag)
+  ) {
     my %com = (columnsel($lang)) ? %commune : %commune2;
 
     if (exists($com{$name})) {
