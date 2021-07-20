@@ -34,6 +34,7 @@ sub do_read($) {
 
       # Try this encoding.
       $content = $encoding->decode($data);
+      next unless defined $content;
 
       # If the text has a UTF-8 BOM but happens otherwise to be plain
       # text, the heuristic will misidentify it. Avoid this.

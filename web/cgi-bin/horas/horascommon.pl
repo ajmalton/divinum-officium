@@ -415,7 +415,7 @@ sub getrank {
 
     if ($hora =~ /(Vespera|Completorium)/i && $tempora{Rule} =~ /No secunda Vespera/i && $version !~ /1960/) {
       $trank = '';
-      %tempora = {};
+      %tempora = ();
       $tname = '';
     }
   } else {
@@ -487,7 +487,7 @@ sub getrank {
 
     if ($hora =~ /(Vespera|Completorium)/i && $saint{Rule} =~ /No secunda Vespera/i && $version !~ /1960/) {
       $srank = '';
-      %saint = {};
+      %saint = ();
       $sname = '';
     }
   } else {
@@ -685,11 +685,11 @@ sub getrank {
         $crank = '';
         $cname = '';
         @crank = '';
-        %csaint = {};
+        %csaint = ();
       } elsif ($srank[2] >= 5 && $crank =~ /infra octav/i) {
         $crank = '';
         $cname = '';
-        %csaint = {};
+        %csaint = ();
         @crank = '';
       }
     }
@@ -701,11 +701,11 @@ sub getrank {
         $srank = '';
         $sname = '';
         @srank = '';
-        %saint = {};
+        %saint = ();
       } elsif ($trank[2] >= 5 && $srank =~ /infra octav/i && $srank[0] !~ /Epiph/) {
         $srank = '';
         $sname = '';
-        %saint = {};
+        %saint = ();
         @srank = '';
       }
     }
@@ -720,7 +720,7 @@ sub getrank {
 #    )
 #  {
 #    $srank = $sname = $crank = $cname = '';
-#    %saint = %csaint = {};
+#    %saint = %csaint = ();
 #    @srank = @crank = '';
 #  }
 #  $commemoratio = $commemoratio1 = $communetype = $commune = $commemorated = $dayname[2] = $scriptura = '';
@@ -908,9 +908,10 @@ sub getrank {
 	$dayname[2] = "Transfer $trank[0]";
       }
       $commemoratio = '';
-    } elsif ($version =~ /1960|Newcal|Monastic/i
+    } elsif (
+      $version =~ /1960|Newcal|Monastic/i
       && $winner{Rule} =~ /Festum Domini/i
-      && $trank =~ /Dominica/i
+      && ($trank//"") =~ /Dominica/i
     ) {
       $trank = '';
       @trank = ();
@@ -983,22 +984,24 @@ sub getrank {
   } else {    #winner is de tempora
     if (
          $version !~ /Monastic/i
-      && @srank && @trank
-      && $dayname[0] !~ /(Adv|Quad[0-6])/i
-      && $srank[2] < 2
-      && $trank[2] < 2
+      && ($dayname[0]//"") !~ /(Adv|Quad[0-6])/i
+      && ($srank[2]//0) < 2
+      && ($trank[2]//0) < 2
       && $testmode !~ /^season$/i
       && (
-        ($dayofweek == 6 && $srank !~ /Vigil/i && $trank[2] < 2 && !$transfervigil)
-        || ( $hora =~ /Vespera|Completorium/i
+        ($dayofweek == 6
+          && $srank !~ /Vigil/i
+          && ($trank[2]//0) < 2
+          && !$transfervigil)
+        ||
+        ( $hora =~ /Vespera|Completorium/i
           && $dayofweek == 5
-          && $trank[2] < 2
-          && $srank[0] !~ /Vigil/i
-          && $csaint{Rank} !~ /Vigil/i
+          && ($trank[2]//0) < 2
+          && ($srank[0]//"") !~ /Vigil/i
+          && ($csaint{Rank}//"") !~ /Vigil/i
           && $version !~ /(1960|Newcal)/)
       )
-      )
-    {
+    ) {
       $tempora{Rank} = $trank = "Sanctae Mariae Sabbato;;Feria;;2;;vide $C10";
       $scriptura = $tname;
       $tname = "$communename/$C10.txt";
@@ -1062,7 +1065,7 @@ sub getrank {
 
         if ($srank[0]) {
           $dayname[2] = "$comm$laudesonly: $srank[0]";
-          $marian_commem = ($srank[3] =~ /C1[0-9]/);
+          $marian_commem = (($srank[3]//"") =~ /C1[0-9]/);
         }
         if ($version =~ /(monastic|1960)/i && $dayname[2] =~ /Januarii/i) { $dayname[2] = ''; }
 
@@ -1105,7 +1108,7 @@ sub getrank {
   #Newcal commemoratio handling
 #  if ($version =~ /Newcal/i && ($month != 12 || $day < 17 || $day > 24)) {
 #    $commemoratio = $commemoratio1 = '';
-#    %commemoratio = %commemoratio2 = {};
+#    %commemoratio = %commemoratio2 = ();
 #  }
 
   #Commemoratio for litaniis majores
@@ -1218,12 +1221,11 @@ sub emberday {
   if ($dayname[0] =~ /Quad1/i) { return 1; }
   if ($dayname[0] =~ /Pasc7/i) { return 1; }
   if ($month != 9) { return 0; }
-  if ($winner{Rank} =~ /Quatuor/i || $commemoratio{Rank} =~ /Quatuor/i || $scriptura{Rank} =~ /Quatuor/i) { return 1; }
 
-  if ( $winner{Rank} =~ /Quattuor/i
-    || $commemoratio{Rank} =~ /Quattuor/i
-    || $scriptura{Rank} =~ /Quattuor/i)
-  {
+  if (($winner{Rank}//"") =~ /Quatt?uor/i
+    || ($commemoratio{Rank}//"") =~ /Quatt?uor/i
+    || ($scriptura{Rank}//"") =~ /Quatt?uor/
+  ) {
     return 1;
   }
   return 0;
@@ -1353,40 +1355,70 @@ sub precedence {
   {
     $transfervigil = $winner;
   }
-  if ($winner =~ /Sancti/ && $rule =~ /Tempora none/i) { $commemoratio = $scriptura = $dayname[2] = ''; }
 
-  if ($version !~ /1960/ && $hora =~ /Vespera/ && $month == 12 && $day == 28 && $dayofweek == 6) {
+  if ($winner =~ /Sancti/
+    && $rule =~ /Tempora none/i
+  ) {
+    $commemoratio = '';
+    $scriptura = '';
+    $dayname[2] = '';
+  }
+
+  if ($version !~ /1960/
+    && $hora =~ /Vespera/
+    && $month == 12
+    && $day == 28
+    && $dayofweek == 6
+  ) {
     $commemoratio1 = $commemoratio;
     $commemoratio = 'Sancti/12-29.txt';
   }
 
-  if ($version !~ /1960/ && $hora =~ /Vespera/ && $month == 1 && $day == 3 && $dayofweek == 6) {
+  if ($version !~ /1960/
+    && $hora =~ /Vespera/
+    && $month == 1
+    && $day == 3
+    && $dayofweek == 6
+  ) {
     $commemoratio1 = 'Sancti/01-04.txt';
   }
   
-  if ($version =~ /1960|Newcal/ && $winner{Rule} =~ /No Sunday commemoratio/i && $dayofweek == 0) {
-    $commemoratio = $commemoratio1 = $dayname[2] = '';
+  if ($version =~ /1960|Newcal/
+    && $winner{Rule} =~ /No Sunday commemoratio/i
+    && $dayofweek == 0
+  ) {
+    $commemoratio = '';
+    $commemoratio1 = '';
+    $dayname[2] = '';
   }
 
   if ($commemoratio) {
-    my $flag = ($commemoratio =~ /tempora/i && $tvesp == 1) ? 1 : 0;
+    my $flag = ($commemoratio =~ /tempora/i
+      && $tvesp == 1);
     %commemoratio = %{officestring($datafolder, $lang1, $commemoratio, $flag)};
 
-    if ($version =~ /1960|Newcal/ && $winner{Rule} =~ /Festum Domini/ && $commemoratio{Rule} =~ /Festum Domini/i) {
+    if ($version =~ /1960|Newcal/
+      && $winner{Rule} =~ /Festum Domini/
+      && $commemoratio{Rule} =~ /Festum Domini/i
+    ) {
       $commemoratio = '';
-      %commemoratio = {};
+      %commemoratio = ();
       $dayname[2] = '';
     }
     if ($version =~ /Monastic|1960|Newcal/ && $commemoratio =~ /06-28r?/i && $dayofweek == 0) {
       $commemoratio = '';
-      %commemoratio = {};
+      %commemoratio = ();
       $dayname[2] = '';
     }
-    if ($vespera == $svesp && $vespera == 1 && $cvespera == 3 && $commemoratio{Rule} =~ /No second Vespera/i) {
+    if ($vespera == $svesp
+      && $vespera == 1
+      && $cvespera == 3
+      && $commemoratio{Rule} =~ /No second Vespera/i
+    ) {
       $commemoratio = '';
-      %commemoratio = {};
+      %commemoratio = ();
       $dayname[2] = '';
-    } else {
+    } elsif ($commemoratio) {
       %commemoratio2 = %{officestring($datafolder, $lang2, $commemoratio)};
     }
   }
@@ -1397,7 +1429,7 @@ sub precedence {
 
     if ($version =~ /1960/ && $winner{Rule} =~ /Festum Domini/ && $commemoratio1{Rule} =~ /Festum Domini/) {
       $commemoratio1 = '';
-      %commemoratio1 = {};
+      %commemoratio1 = ();
       $dayname[2] = '';
     }
   }
@@ -1502,7 +1534,7 @@ sub precedence {
     $commemoratio = $commemoratio1 = $scriptura = $commune = '';
     %winner = updaterank(setupstring($datafolder, $lang1, $winner));
     %winner2 = updaterank(setupstring($datafolder, $lang2, $winner));
-    %commemoratio = %commemoratio1 = %scriptura = %commune = %commemoratio2 = %scriptura2 = %commune2 = {};
+    %commemoratio = %commemoratio1 = %scriptura = %commune = %commemoratio2 = %scriptura2 = %commune2 = ();
     $rule = $winner{Rule};
 
     if ($vtv =~ /C12/i) {
@@ -1546,7 +1578,7 @@ sub precedence {
     $commemoratio = $commemoratio1 = $scriptura = $commune = '';
     %winner = updaterank(setupstring($datafolder, $lang1, $winner));
     %winner2 = updaterank(setupstring($datafolder, $lang2, $winner));
-    %commemoratio = %scriptura = %commune = %commemoratio2 = %scriptura2 = %commune2 = {};
+    %commemoratio = %scriptura = %commune = %commemoratio2 = %scriptura2 = %commune2 = ();
     $rule = $winner{Rule};
 
     if ($vtv =~ /Maria/i) {
@@ -1576,13 +1608,18 @@ sub precedence {
   # all other days being unambiguous.
   if ($version =~ /Trident/i) {
     $laudes =
-      ($dayname[0] =~ /Quad/i && $dayofweek == 0 && $winner =~ /Tempora/i)
-      ? 2
-      : '';
+      ($dayname[0] =~ /Quad/i
+        && $dayofweek == 0
+        && $winner =~ /Tempora/i
+      ) ? 2 : '';
   } else {
     $laudes = (
       (
-             (($dayname[0] =~ /Adv/i && $dayofweek != 0) || $dayname[0] =~ /Quad/i || emberday())
+             (($dayname[0] =~ /Adv/i
+                 && $dayofweek != 0)
+               || $dayname[0] =~ /Quad/i
+               || emberday()
+             )
           && $winner =~ /tempora/i
           && $winner{Rank} !~ /(Beatae|Sanctae) Mariae/i
       )

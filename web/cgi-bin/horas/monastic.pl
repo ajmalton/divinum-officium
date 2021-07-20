@@ -127,10 +127,10 @@ sub psalmi_matutinum_monastic {
   setcomment($label, 'Source', $comment, $lang, $prefix);
   my $i = 0;
   my %w = (columnsel($lang)) ? %winner : %winner2;
-  antetpsalm_mm('', -1);    #initialization for multiple psalms under one antiphon
+  antetpsalm_mm('', -1, $lang);    #initialization for multiple psalms under one antiphon
   push(@s, '!Nocturn I.', '_');
-  for (0..5) { antetpsalm_mm($psalmi[$_], $_); }
-  antetpsalm_mm('', -2);    # set antiphon for multiple psalms under one antiphon situation
+  for (0..5) { antetpsalm_mm($psalmi[$_], $_, $lang); }
+  antetpsalm_mm('', -2, $lang);    # set antiphon for multiple psalms under one antiphon situation
   push(@s, $psalmi[6], $psalmi[7], "\n");
 
   if ($rule =~ /(9|12) lectio/i && $rank > 4.9) {
@@ -147,8 +147,8 @@ sub psalmi_matutinum_monastic {
     lectiones($winner{Rank} !~ /vigil/i, $lang);
   }
   push(@s, "\n", '!Nocturn II.', '_');
-  for (8..13) { antetpsalm_mm($psalmi[$_], $_); }
-  antetpsalm_mm('', -2);    #draw out antiphon if any
+  for (8..13) { antetpsalm_mm($psalmi[$_], $_, $lang); }
+  antetpsalm_mm('', -2, $lang);    #draw out antiphon if any
 
   if ($winner{Rule} =~ /(12|9) lectiones/i && $rank > 4.9) {
     push(@s, $psalmi[14], $psalmi[15], "\n");
@@ -156,8 +156,8 @@ sub psalmi_matutinum_monastic {
     push(@s, "\n", '!Nocturn III.', '_');
 
     if (($dayname[0] eq "Quad6") && ($dayofweek > 3))  {
-      for (16..18) { antetpsalm_mm($psalmi[$_], $_); }
-      antetpsalm_mm('', -2);
+      for (16..18) { antetpsalm_mm($psalmi[$_], $_, $lang); }
+      antetpsalm_mm('', -2, $lang);
       push(@s, $psalmi[19], $psalmi[20], "\n");
       lectiones(3, $lang);
       return;
@@ -239,13 +239,14 @@ sub psalmi_matutinum_monastic {
   push(@s, "!!Capitulum", $w, "\n");
 }
 
-#*** antetpsal_mmm($line, $i)
+#*** antetpsalm_mm($line, $i, $lang)
 # format of line is antiphona;;psalm number
 # sets the antiphon and psalm call into the output flow
 # handles the multiple psalms under one antiphon situation
 sub antetpsalm_mm {
   my $line = shift;
   my $ind = shift;
+  my $lang = shift;
   my @line = split(';;', $line);
   our $lastantiphon;
   $lastantiphon =~ s/\s+\*//;

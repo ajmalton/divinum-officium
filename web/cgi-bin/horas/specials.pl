@@ -1155,24 +1155,28 @@ sub psalmi_major {
   setcomment($label, 'Source', $comment, $lang, $prefix);
 
   if ($version =~ /monastic/i) {
-    antetpsalm_mm('', -1);
-    for (my $i = 0; $i < @psalmi; $i++) { antetpsalm_mm($psalmi[$i], $i); }
-    antetpsalm_mm('', -2);
+    antetpsalm_mm('', -1, $lang);
+    for (my $i = 0; $i < @psalmi; $i++) { antetpsalm_mm($psalmi[$i], $i, $lang); }
+    antetpsalm_mm('', -2, $lang);
   } else {
     for (my $i = 0; $i < @psalmi; $i++) {
       my $last = ($i == (@psalmi - 1)) ? 1 : 0;
-      antetpsalm($psalmi[$i], $i, $last, $lang);
+      antetpsalm($psalmi[$i], $i, $lang, $last);
     }
   }
   return;
 }
 
-#*** antetpsalm($line, $i, $last, $lang)
+#*** antetpsalm($line, $i, $lang, $last)
 # format of line is antiphona;;psalm number
-# returns the psalm included into the starting end ending antiphones
-# handles duplex or no attribute, and the nonreadeable beginnings
+# returns the psalm included into the starting
+# and ending antiphons.
+# handles duplex or no attribute,
+# and the nonreadeable beginnings.
+# $lang must be supplied
+# $last must be supplied for Eastertide
 sub antetpsalm {
-  my ($line, $ind, $last, $lang) = @_;
+  my ($line, $ind, $lang, $last) = @_;
   my @line = split(';;', $line);
   my @ant = split('\*', $line[0]);
   my $ant = $line[0];
@@ -1195,7 +1199,7 @@ sub antetpsalm {
       $ant1 = $ant = '';
     }
   }
-  if ($hora =~ /Matutinum/i && $dayname[0] =~ /Pasc[1-6]/i) { ($ant1, $ant) = ant_matutinum($ant1, $ant, $ind); }
+  if ($hora =~ /Matutinum/i && $dayname[0] =~ /Pasc[1-6]/i) { ($ant1, $ant) = ant_matutinum($ant1, $ant, $ind, $lang); }
   $ant1 =~ s/\;\;[0-9\;n]+//;
   if ($ant1) { push(@s, "Ant. $ant1"); }
   my $p = $line[1];
@@ -2105,19 +2109,22 @@ sub doxology {
   my $dox = '';
   my $dname = '';
 
-  if ($version !~ /1960/ || ($commune =~ /C1p/i && $hora =~ /Matutinum|Laudes|Vespera/i)) {
+  if ($version !~ /1960/
+    || (($commune//"") =~ /C1p/i
+      && $hora =~ /Matutinum|Laudes|Vespera/i
+    )
+  ) {
     if (exists($winner{Doxology})) {
       my %w = (columnsel($lang)) ? %winner : %winner2;
       $dox = $w{Doxology};
       setbuild2("Special doxology");
-    } elsif ($rule =~ /Doxology=([a-z]+)/i) {
+    } elsif (($rule//"") =~ /Doxology=([a-z]+)/i) {
       $dname = $1;
     } elsif (
       ($version =~ /Trident/i
-	|| %winner && $winner{Rank} !~ /Adventus/)
-      && %commemoratio
-      && $commemoratio{Rule} =~ /Doxology=([a-z]+)/i)
-    {
+	|| ($winner{Rank}//"") !~ /Adventus/)
+      && ($commemoratio{Rule}//"") =~ /Doxology=([a-z]+)/i
+    ) {
       $dname = $1;
     } elsif (($month == 8 && $day > 15 && $day < 23 && $version !~ /Monastic/i)
       || ($version !~ /1570/ && $month == 12 && $day > 8 && $day < 16 && $dayofweek > 0))

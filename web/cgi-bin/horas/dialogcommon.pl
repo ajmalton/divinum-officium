@@ -139,7 +139,7 @@ sub get_tempus_id {
   our ($day, $month, $day_of_week);
   our $hora;
   my $vesp_or_comp = ($hora =~ /Vespera/i) || ($hora =~ /Completorium/i);
-  local $_ = $dayname[0];
+  local $_ = $dayname[0]//"";
 
   /^Adv/
     ? 'Adventus'
@@ -387,7 +387,7 @@ sub setupstring($$$%)
 # their contents. $basedir and $lang are used for inclusions only.
 sub setupstring_parse_file($$$) {
   my ($fullpath, $basedir, $lang) = @_;
-  my @filelines = do_read($fullpath) or return '';
+  my @filelines = do_read($fullpath) or return undef;
 
   # Regex for matching section headers.
   my $sectionregex = qr/^\s*\[([\pL\pN_ #,:-]+)\]/i;
@@ -581,7 +581,7 @@ sub get_loadtime_inclusion(\%$$$$$$$) {
     && !$missa
     && $callerfname !~ /C[23]/
   ) {
-    $ftitle =~ s/(C[23])(?!p)/$1p/g;
+    $ftitle =~ s/(C[23])(?!p)/$1p/g if $ftitle;
   }
 
   # Load the file to resolve the reference; if none specified, it's a
